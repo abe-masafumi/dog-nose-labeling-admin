@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>犬の鼻ラベリング管理ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        .image-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        .image-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .image-display {
+            max-width: 100%;
+            max-height: 500px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .image-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .image-info h3 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .nav-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .nav-button:hover {
+            background: #0056b3;
+        }
+
+        .nav-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .image-counter {
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .label-section {
+            margin-bottom: 20px;
+        }
+
+        .label-section h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .label-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .label-button {
+            padding: 15px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .label-button:hover {
+            border-color: #007bff;
+            background: #f8f9fa;
+        }
+
+        .label-button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .label-button.nose {
+            border-color: #28a745;
+        }
+
+        .label-button.nose.active {
+            background: #28a745;
+            border-color: #28a745;
+        }
+
+        .label-button.non_nose {
+            border-color: #dc3545;
+        }
+
+        .label-button.non_nose.active {
+            background: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .sub-labels {
+            margin-bottom: 20px;
+        }
+
+        .sub-label-group {
+            margin-bottom: 15px;
+        }
+
+        .sub-label-group h4 {
+            margin-bottom: 8px;
+            color: #6c757d;
+        }
+
+        .sub-label-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .sub-label-option {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .sub-label-option:hover {
+            border-color: #007bff;
+        }
+
+        .sub-label-option.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .dataset-split {
+            margin-bottom: 20px;
+        }
+
+        .split-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+
+        .split-button {
+            padding: 8px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .split-button:hover {
+            border-color: #007bff;
+        }
+
+        .split-button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .save-button {
+            width: 100%;
+            padding: 15px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            transition: background-color 0.3s;
+        }
+
+        .save-button:hover {
+            background: #218838;
+        }
+
+        .export-section {
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+
+        .export-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .export-button {
+            padding: 10px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .export-button:hover {
+            background: #5a6268;
+        }
+
+        .dataset-export {
+            width: 100%;
+            padding: 10px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .dataset-export:hover {
+            background: #138496;
+        }
+
+        .shortcuts {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .shortcuts h4 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .shortcut-key {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #6c757d;
+        }
+
+        .no-images {
+            text-align: center;
+            padding: 50px;
+            color: #6c757d;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐕 犬の鼻ラベリング管理ツール</h1>
+            <p>犬の顔画像から鼻の有無を判定し、機械学習用データセットを作成します</p>
+        </div>
+
+        <div class="main-content">
+            <div class="image-section">
+                <div class="navigation">
+                    <button class="nav-button" id="prevBtn" onclick="previousImage()">← 前の画像</button>
+                    <div class="image-counter">
+                        <span id="currentIndex">0</span> / <span id="totalImages">0</span>
+                    </div>
+                    <button class="nav-button" id="nextBtn" onclick="nextImage()">次の画像 →</button>
+                </div>
+
+                <div class="image-container" id="imageContainer">
+                    <div class="loading">画像を読み込み中...</div>
+                </div>
+
+                <div class="image-info" id="imageInfo" style="display: none;">
+                    <h3>画像情報</h3>
+                    <div class="info-item">
+                        <span>ファイル名:</span>
+                        <span id="fileName">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span>パス:</span>
+                        <span id="filePath">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span>現在のラベル:</span>
+                        <span id="currentLabel">未設定</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="label-section">
+                    <h3>メインラベル</h3>
+                    <div class="label-buttons">
+                        <button class="label-button nose" onclick="setMainLabel('nose')">
+                            🐽 鼻あり (1)
+                        </button>
+                        <button class="label-button non_nose" onclick="setMainLabel('non_nose')">
+                            ❌ 鼻なし (2)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sub-labels">
+                    <h3>サブラベル</h3>
+                    <div class="sub-label-group">
+                        <h4>鼻の向き</h4>
+                        <div class="sub-label-options">
+                            <span class="sub-label-option" onclick="toggleSubLabel('front')">正面 (F)</span>
+                            <span class="sub-label-option" onclick="toggleSubLabel('side')">横向き (S)</span>
+                            <span class="sub-label-option" onclick="toggleSubLabel('tilted')">斜め (T)</span>
+                        </div>
+                    </div>
+                    <div class="sub-label-group">
+                        <h4>鼻の状態</h4>
+                        <div class="sub-label-options">
+                            <span class="sub-label-option" onclick="toggleSubLabel('wet')">濡れている (W)</span>
+                            <span class="sub-label-option" onclick="toggleSubLabel('dry')">乾いている (D)</span>
+                            <span class="sub-label-option" onclick="toggleSubLabel('blurred')">ぼやけている (B)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dataset-split">
+                    <h3>データセット分割</h3>
+                    <div class="split-buttons">
+                        <button class="split-button" onclick="setDatasetSplit('train')">Train</button>
+                        <button class="split-button" onclick="setDatasetSplit('val')">Val</button>
+                        <button class="split-button" onclick="setDatasetSplit('test')">Test</button>
+                    </div>
+                </div>
+
+                <button class="save-button" onclick="saveLabel()">💾 ラベルを保存</button>
+
+                <div class="export-section">
+                    <h3>データエクスポート</h3>
+                    <div class="export-buttons">
+                        <button class="export-button" onclick="exportData('json')">JSON</button>
+                        <button class="export-button" onclick="exportData('csv')">CSV</button>
+                    </div>
+                    <button class="dataset-export" onclick="exportDataset()">📁 データセット出力</button>
+                </div>
+
+                <div class="shortcuts">
+                    <h4>⌨️ キーボードショートカット</h4>
+                    <div class="shortcut-item">
+                        <span>鼻あり:</span>
+                        <span class="shortcut-key">1</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>鼻なし:</span>
+                        <span class="shortcut-key">2</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>正面:</span>
+                        <span class="shortcut-key">F</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>横向き:</span>
+                        <span class="shortcut-key">S</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>斜め:</span>
+                        <span class="shortcut-key">T</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>濡れている:</span>
+                        <span class="shortcut-key">W</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>乾いている:</span>
+                        <span class="shortcut-key">D</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>ぼやけている:</span>
+                        <span class="shortcut-key">B</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>前の画像:</span>
+                        <span class="shortcut-key">←</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>次の画像:</span>
+                        <span class="shortcut-key">→</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>保存:</span>
+                        <span class="shortcut-key">Enter</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let images = [];
+        let currentImageIndex = 0;
+        let currentMainLabel = null;
+        let currentSubLabels = [];
+        let currentDatasetSplit = null;
+
+        // 初期化
+        async function init() {
+            try {
+                const response = await fetch('/api/images');
+                images = await response.json();
+                
+                if (images.length === 0) {
+                    document.getElementById('imageContainer').innerHTML = 
+                        '<div class="no-images">imagesフォルダに画像ファイルを配置してください</div>';
+                    return;
+                }
+                
+                document.getElementById('totalImages').textContent = images.length;
+                loadImage(0);
+            } catch (error) {
+                console.error('画像の読み込みに失敗しました:', error);
+                document.getElementById('imageContainer').innerHTML = 
+                    '<div class="no-images">画像の読み込みに失敗しました</div>';
+            }
+        }
+
+        // 画像を読み込み
+        function loadImage(index) {
+            if (index < 0 || index >= images.length) return;
+            
+            currentImageIndex = index;
+            const image = images[index];
+            
+            // 画像表示
+            document.getElementById('imageContainer').innerHTML = 
+                `<img src="/images/${image.filename}" alt="${image.filename}" class="image-display">`;
+            
+            // 画像情報表示
+            document.getElementById('imageInfo').style.display = 'block';
+            document.getElementById('fileName').textContent = image.filename;
+            document.getElementById('filePath').textContent = image.filepath;
+            document.getElementById('currentLabel').textContent = 
+                image.main_label || '未設定';
+            
+            // インデックス更新
+            document.getElementById('currentIndex').textContent = index + 1;
+            
+            // ナビゲーションボタンの状態更新
+            document.getElementById('prevBtn').disabled = index === 0;
+            document.getElementById('nextBtn').disabled = index === images.length - 1;
+            
+            // 現在のラベル状態を復元
+            currentMainLabel = image.main_label;
+            currentSubLabels = image.sub_labels ? JSON.parse(image.sub_labels) : [];
+            currentDatasetSplit = image.dataset_split;
+            
+            updateUI();
+        }
+
+        // UI状態を更新
+        function updateUI() {
+            // メインラベルボタンの状態更新
+            document.querySelectorAll('.label-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (currentMainLabel) {
+                const activeBtn = document.querySelector(`.label-button.${currentMainLabel}`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+            
+            // サブラベルの状態更新
+            document.querySelectorAll('.sub-label-option').forEach(option => {
+                option.classList.remove('active');
+                const label = option.textContent.split(' ')[0];
+                if (currentSubLabels.includes(label)) {
+                    option.classList.add('active');
+                }
+            });
+            
+            // データセット分割の状態更新
+            document.querySelectorAll('.split-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (currentDatasetSplit) {
+                const activeBtn = document.querySelector(`.split-button[onclick="setDatasetSplit('${currentDatasetSplit}')"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+        }
+
+        // メインラベル設定
+        function setMainLabel(label) {
+            currentMainLabel = label;
+            updateUI();
+        }
+
+        // サブラベル切り替え
+        function toggleSubLabel(label) {
+            const index = currentSubLabels.indexOf(label);
+            if (index > -1) {
+                currentSubLabels.splice(index, 1);
+            } else {
+                currentSubLabels.push(label);
+            }
+            updateUI();
+        }
+
+        // データセット分割設定
+        function setDatasetSplit(split) {
+            currentDatasetSplit = split;
+            updateUI();
+        }
+
+        // ラベル保存
+        async function saveLabel() {
+            if (!currentMainLabel) {
+                alert('メインラベルを選択してください');
+                return;
+            }
+            
+            const image = images[currentImageIndex];
+            const data = {
+                image_path: image.filepath,
+                main_label: currentMainLabel,
+                sub_labels: currentSubLabels,
+                dataset_split: currentDatasetSplit
+            };
+            
+            try {
+                const response = await fetch('/api/labels', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    // 画像データを更新
+                    images[currentImageIndex].main_label = currentMainLabel;
+                    images[currentImageIndex].sub_labels = JSON.stringify(currentSubLabels);
+                    images[currentImageIndex].dataset_split = currentDatasetSplit;
+                    
+                    // 現在のラベル表示を更新
+                    document.getElementById('currentLabel').textContent = currentMainLabel;
+                    
+                    // 次の画像に移動
+                    if (currentImageIndex < images.length - 1) {
+                        nextImage();
+                    }
+                } else {
+                    alert('ラベルの保存に失敗しました');
+                }
+            } catch (error) {
+                console.error('保存エラー:', error);
+                alert('ラベルの保存に失敗しました');
+            }
+        }
+
+        // 前の画像
+        function previousImage() {
+            if (currentImageIndex > 0) {
+                loadImage(currentImageIndex - 1);
+            }
+        }
+
+        // 次の画像
+        function nextImage() {
+            if (currentImageIndex < images.length - 1) {
+                loadImage(currentImageIndex + 1);
+            }
+        }
+
+        // データエクスポート
+        function exportData(format) {
+            window.open(`/api/export/${format}`, '_blank');
+        }
+
+        // データセットエクスポート
+        function exportDataset() {
+            window.open('/api/export/dataset', '_blank');
+        }
+
+        // キーボードショートカット
+        document.addEventListener('keydown', function(event) {
+            // 入力フィールドにフォーカスがある場合は無視
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            switch(event.key) {
+                case '1':
+                    setMainLabel('nose');
+                    break;
+                case '2':
+                    setMainLabel('non_nose');
+                    break;
+                case 'f':
+                case 'F':
+                    toggleSubLabel('front');
+                    break;
+                case 's':
+                case 'S':
+                    toggleSubLabel('side');
+                    break;
+                case 't':
+                case 'T':
+                    toggleSubLabel('tilted');
+                    break;
+                case 'w':
+                case 'W':
+                    toggleSubLabel('wet');
+                    break;
+                case 'd':
+                case 'D':
+                    toggleSubLabel('dry');
+                    break;
+                case 'b':
+                case 'B':
+                    toggleSubLabel('blurred');
+                    break;
+                case 'ArrowLeft':
+                    previousImage();
+                    break;
+                case 'ArrowRight':
+                    nextImage();
+                    break;
+                case 'Enter':
+                    saveLabel();
+                    break;
+            }
+        });
+
+        // 初期化実行
+        init();
+    </script>
+</body>
+</html>
