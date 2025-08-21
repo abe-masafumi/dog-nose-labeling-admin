@@ -53,7 +53,7 @@ python app.py
 
 5. **ブラウザでアクセス**
 ```
-http://localhost:5000
+http://localhost:5001
 ```
 
 ## 📁 プロジェクト構造
