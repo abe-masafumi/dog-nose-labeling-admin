@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>レビュー画面 - 犬の鼻ラベリング管理ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .navigation {
+            margin-bottom: 20px;
+        }
+
+        .nav-button {
+            background-color: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .nav-button:hover {
+            background-color: #5a67d8;
+        }
+
+        .filter-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .filter-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .filter-group {
+            margin-bottom: 20px;
+        }
+
+        .filter-group h4 {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .filter-option {
+            background-color: #f8f9fa;
+            border: 2px solid #e9ecef;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .filter-option:hover {
+            background-color: #e9ecef;
+        }
+
+        .filter-option.active {
+            background-color: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .search-button, .clear-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .search-button {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .search-button:hover {
+            background-color: #218838;
+        }
+
+        .clear-button {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .clear-button:hover {
+            background-color: #5a6268;
+        }
+
+        .results-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .results-count {
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .result-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+
+        .result-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .result-item.clickable:hover {
+            background-color: #f8f9fa;
+            border: 2px solid #667eea;
+            cursor: pointer;
+        }
+
+        .result-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .result-info {
+            padding: 15px;
+        }
+
+        .result-filename {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .result-labels {
+            margin-bottom: 8px;
+        }
+
+        .label-tag {
+            display: inline-block;
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-right: 5px;
+            margin-bottom: 3px;
+        }
+
+        .label-tag.main {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .label-tag.dataset {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .no-results h3 {
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        /* 先頭に戻るボタン */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-to-top:hover {
+            background-color: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* モーダルスタイル */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        .close:hover {
+            opacity: 0.7;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-image-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .modal-labels-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .modal-label-group {
+            margin-bottom: 20px;
+        }
+
+        .modal-label-group h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .modal-label-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .modal-label-option {
+            background-color: #e9ecef;
+            border: 2px solid #e9ecef;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+            font-size: 0.9em;
+        }
+
+        .modal-label-option:hover {
+            background-color: #dee2e6;
+        }
+
+        .modal-label-option.active {
+            background-color: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .modal-save-btn, .modal-cancel-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .modal-save-btn {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .modal-save-btn:hover {
+            background-color: #218838;
+        }
+
+        .modal-cancel-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .modal-cancel-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 レビュー画面</h1>
+            <p>ラベル付けされた画像をフィルターして確認</p>
+        </div>
+
+        <div class="navigation">
+            <a href="/" class="nav-button">← ラベリング画面に戻る</a>
+        </div>
+
+        <div class="filter-section">
+            <h3>🎯 フィルター条件</h3>
+            
+            <div class="filter-group">
+                <h4>メインラベル</h4>
+                <div class="filter-options" id="mainLabelFilters">
+                    <div class="filter-option" data-value="nose">🐽 鼻あり</div>
+                    <div class="filter-option" data-value="non_nose">❌ 鼻なし</div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <h4>鼻の向き</h4>
+                <div class="filter-options" id="orientationFilters">
+                    <div class="filter-option" data-value="front">正面</div>
+                    <div class="filter-option" data-value="side">横向き</div>
+                    <div class="filter-option" data-value="tilted">斜め</div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <h4>鮮明判定</h4>
+                <div class="filter-options" id="clarityFilters">
+                    <div class="filter-option" data-value="clear">鮮明</div>
+                    <div class="filter-option" data-value="blurred">ぼやけ</div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <h4>鼻の色</h4>
+                <div class="filter-options" id="colorFilters">
+                    <div class="filter-option" data-value="black">黒</div>
+                    <div class="filter-option" data-value="brown">茶色</div>
+                    <div class="filter-option" data-value="gray">灰色</div>
+                    <div class="filter-option" data-value="pink">ピンク</div>
+                    <div class="filter-option" data-value="marble">マーブル</div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <h4>鼻の大きさ</h4>
+                <div class="filter-options" id="sizeFilters">
+                    <div class="filter-option" data-value="large">大きい</div>
+                    <div class="filter-option" data-value="small">小さい</div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <h4>毛色</h4>
+                <div class="filter-options" id="furFilters">
+                    <div class="filter-option" data-value="light_fur">明るい毛色</div>
+                    <div class="filter-option" data-value="dark_fur">暗い毛色</div>
+                    <div class="filter-option" data-value="same_as_nose">鼻と同じ毛色</div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <h4>データセット分割</h4>
+                <div class="filter-options" id="datasetFilters">
+                    <div class="filter-option" data-value="train">Train</div>
+                    <div class="filter-option" data-value="val">Val</div>
+                    <div class="filter-option" data-value="test">Test</div>
+                </div>
+            </div>
+
+            <div class="filter-controls">
+                <button class="search-button" onclick="searchImages()">🔍 検索</button>
+                <button class="clear-button" onclick="clearFilters()">🗑️ フィルタークリア</button>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <div class="results-header">
+                <h3>📋 検索結果</h3>
+                <div class="results-count" id="resultsCount">検索を実行してください</div>
+            </div>
+            <div id="resultsContainer">
+                <div class="loading">フィルター条件を設定して検索ボタンを押してください</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 先頭に戻るボタン -->
+    <button id="backToTopButton" class="back-to-top" onclick="scrollToTop()" style="display: none;">
+        ↑ 先頭に戻る
+    </button>
+
+    <!-- ラベル編集モーダル -->
+    <div id="labelEditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🏷️ ラベル編集</h2>
+                <button class="close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image-container">
+                    <img id="modalImage" class="modal-image" src="" alt="">
+                    <div id="modalFilename" style="margin-top: 10px; font-weight: bold; color: #333;"></div>
+                </div>
+                
+                <div class="modal-labels-section">
+                    <div class="modal-label-group">
+                        <h4>メインラベル</h4>
+                        <div class="modal-label-options" id="modalMainLabels">
+                            <div class="modal-label-option" data-value="nose">🐽 鼻あり</div>
+                            <div class="modal-label-option" data-value="non_nose">❌ 鼻なし</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>鼻の向き</h4>
+                        <div class="modal-label-options" id="modalOrientation">
+                            <div class="modal-label-option" data-value="front">正面</div>
+                            <div class="modal-label-option" data-value="side">横向き</div>
+                            <div class="modal-label-option" data-value="tilted">斜め</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>鮮明判定</h4>
+                        <div class="modal-label-options" id="modalClarity">
+                            <div class="modal-label-option" data-value="clear">鮮明</div>
+                            <div class="modal-label-option" data-value="blurred">ぼやけ</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>鼻の色</h4>
+                        <div class="modal-label-options" id="modalColor">
+                            <div class="modal-label-option" data-value="black">黒</div>
+                            <div class="modal-label-option" data-value="brown">茶色</div>
+                            <div class="modal-label-option" data-value="gray">灰色</div>
+                            <div class="modal-label-option" data-value="pink">ピンク</div>
+                            <div class="modal-label-option" data-value="marble">マーブル</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>鼻の大きさ</h4>
+                        <div class="modal-label-options" id="modalSize">
+                            <div class="modal-label-option" data-value="large">大きい</div>
+                            <div class="modal-label-option" data-value="small">小さい</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>毛色</h4>
+                        <div class="modal-label-options" id="modalFur">
+                            <div class="modal-label-option" data-value="light_fur">明るい毛色</div>
+                            <div class="modal-label-option" data-value="dark_fur">暗い毛色</div>
+                            <div class="modal-label-option" data-value="same_as_nose">鼻と同じ毛色</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>データセット分割</h4>
+                        <div class="modal-label-options" id="modalDataset">
+                            <div class="modal-label-option" data-value="train">Train</div>
+                            <div class="modal-label-option" data-value="val">Val</div>
+                            <div class="modal-label-option" data-value="test">Test</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="modal-cancel-btn" onclick="closeModal()">キャンセル</button>
+                    <button class="modal-save-btn" onclick="saveModalLabels()">💾 保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFilters = {
+            mainLabel: null,
+            subLabels: [],
+            datasetSplit: null
+        };
+
+        let currentEditingImage = null;
+        let modalLabels = {
+            mainLabel: null,
+            subLabels: [],
+            datasetSplit: null
+        };
+
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('filter-option')) {
+                const option = event.target;
+                const value = option.getAttribute('data-value');
+                const parent = option.parentElement;
+                const parentId = parent.id;
+
+                if (parentId === 'mainLabelFilters') {
+                    parent.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('active'));
+                    if (selectedFilters.mainLabel === value) {
+                        selectedFilters.mainLabel = null;
+                    } else {
+                        option.classList.add('active');
+                        selectedFilters.mainLabel = value;
+                    }
+                } else if (parentId === 'datasetFilters') {
+                    parent.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('active'));
+                    if (selectedFilters.datasetSplit === value) {
+                        selectedFilters.datasetSplit = null;
+                    } else {
+                        option.classList.add('active');
+                        selectedFilters.datasetSplit = value;
+                    }
+                } else {
+                    option.classList.toggle('active');
+                    const index = selectedFilters.subLabels.indexOf(value);
+                    if (index > -1) {
+                        selectedFilters.subLabels.splice(index, 1);
+                    } else {
+                        selectedFilters.subLabels.push(value);
+                    }
+                }
+            }
+        });
+
+        async function searchImages() {
+            const resultsContainer = document.getElementById('resultsContainer');
+            const resultsCount = document.getElementById('resultsCount');
+            
+            resultsContainer.innerHTML = '<div class="loading">検索中...</div>';
+            
+            try {
+                const params = new URLSearchParams();
+                
+                if (selectedFilters.mainLabel) {
+                    params.append('main_label', selectedFilters.mainLabel);
+                }
+                
+                if (selectedFilters.datasetSplit) {
+                    params.append('dataset_split', selectedFilters.datasetSplit);
+                }
+                
+                selectedFilters.subLabels.forEach(subLabel => {
+                    params.append('sub_labels', subLabel);
+                });
+                
+                const response = await fetch(`/api/filter?${params.toString()}`);
+                const results = await response.json();
+                
+                displayResults(results);
+                resultsCount.textContent = `${results.length}件の結果`;
+                
+            } catch (error) {
+                console.error('検索エラー:', error);
+                resultsContainer.innerHTML = '<div class="no-results"><h3>エラーが発生しました</h3><p>検索中にエラーが発生しました。</p></div>';
+                resultsCount.textContent = 'エラー';
+            }
+        }
+
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            if (results.length === 0) {
+                resultsContainer.innerHTML = '<div class="no-results"><h3>結果が見つかりません</h3><p>フィルター条件を変更して再度検索してください。</p></div>';
+                return;
+            }
+            
+            const grid = document.createElement('div');
+            grid.className = 'results-grid';
+            
+            results.forEach(result => {
+                const item = document.createElement('div');
+                item.className = 'result-item clickable';
+                item.style.cursor = 'pointer';
+                
+                const subLabelsHtml = result.sub_labels.map(label => 
+                    `<span class="label-tag">${label}</span>`
+                ).join('');
+                
+                item.innerHTML = `
+                    <img src="/images/${result.filename}" alt="${result.filename}" class="result-image" onerror="this.style.display='none'">
+                    <div class="result-info">
+                        <div class="result-filename">${result.filename}</div>
+                        <div class="result-labels">
+                            ${result.main_label ? `<span class="label-tag main">${result.main_label}</span>` : ''}
+                            ${subLabelsHtml}
+                            ${result.dataset_split ? `<span class="label-tag dataset">${result.dataset_split}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                item.addEventListener('click', () => {
+                    openEditModal(result);
+                });
+                
+                grid.appendChild(item);
+            });
+            
+            resultsContainer.innerHTML = '';
+            resultsContainer.appendChild(grid);
+        }
+
+        function clearFilters() {
+            selectedFilters = {
+                mainLabel: null,
+                subLabels: [],
+                datasetSplit: null
+            };
+            
+            document.querySelectorAll('.filter-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            
+            document.getElementById('resultsContainer').innerHTML = '<div class="loading">フィルター条件を設定して検索ボタンを押してください</div>';
+            document.getElementById('resultsCount').textContent = '検索を実行してください';
+        }
+
+        function openEditModal(imageData) {
+            currentEditingImage = imageData;
+            
+            // 画像とファイル名を設定
+            document.getElementById('modalImage').src = `/images/${imageData.filename}`;
+            document.getElementById('modalFilename').textContent = imageData.filename;
+            
+            // 現在のラベルを設定
+            modalLabels = {
+                mainLabel: imageData.main_label,
+                subLabels: imageData.sub_labels ? [...imageData.sub_labels] : [],
+                datasetSplit: imageData.dataset_split
+            };
+            
+            // モーダル内のラベル選択状態を更新
+            updateModalLabels();
+            
+            // モーダルを表示
+            document.getElementById('labelEditModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('labelEditModal').style.display = 'none';
+            currentEditingImage = null;
+            modalLabels = {
+                mainLabel: null,
+                subLabels: [],
+                datasetSplit: null
+            };
+        }
+
+        function updateModalLabels() {
+            // 全てのモーダルラベルオプションをリセット
+            document.querySelectorAll('.modal-label-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            
+            // メインラベルを設定
+            if (modalLabels.mainLabel) {
+                const mainOption = document.querySelector(`#modalMainLabels .modal-label-option[data-value="${modalLabels.mainLabel}"]`);
+                if (mainOption) mainOption.classList.add('active');
+            }
+            
+            // サブラベルを設定
+            modalLabels.subLabels.forEach(subLabel => {
+                const subOption = document.querySelector(`.modal-label-option[data-value="${subLabel}"]`);
+                if (subOption) subOption.classList.add('active');
+            });
+            
+            // データセット分割を設定
+            if (modalLabels.datasetSplit) {
+                const datasetOption = document.querySelector(`#modalDataset .modal-label-option[data-value="${modalLabels.datasetSplit}"]`);
+                if (datasetOption) datasetOption.classList.add('active');
+            }
+        }
+
+        async function saveModalLabels() {
+            if (!currentEditingImage) return;
+            
+            // 現在のスクロール位置を保存
+            const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+            
+            try {
+                const response = await fetch('/api/labels', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image_path: currentEditingImage.filepath,
+                        main_label: modalLabels.mainLabel,
+                        sub_labels: modalLabels.subLabels,
+                        dataset_split: modalLabels.datasetSplit
+                    })
+                });
+                
+                if (response.ok) {
+                    // 保存成功
+                    closeModal();
+                    // 検索結果を再読み込み
+                    await searchImages();
+                    // スクロール位置を復元
+                    setTimeout(() => {
+                        window.scrollTo(0, scrollPosition);
+                    }, 100);
+                } else {
+                    alert('ラベルの保存に失敗しました');
+                }
+            } catch (error) {
+                console.error('保存エラー:', error);
+                alert('ラベルの保存中にエラーが発生しました');
+            }
+        }
+
+        // モーダル内のラベルクリックイベント
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal-label-option')) {
+                const option = event.target;
+                const value = option.getAttribute('data-value');
+                const parent = option.parentElement;
+                const parentId = parent.id;
+
+                if (parentId === 'modalMainLabels') {
+                    // メインラベル（単一選択）
+                    parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
+                    if (modalLabels.mainLabel === value) {
+                        modalLabels.mainLabel = null;
+                    } else {
+                        option.classList.add('active');
+                        modalLabels.mainLabel = value;
+                    }
+                } else if (parentId === 'modalDataset') {
+                    // データセット分割（単一選択）
+                    parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
+                    if (modalLabels.datasetSplit === value) {
+                        modalLabels.datasetSplit = null;
+                    } else {
+                        option.classList.add('active');
+                        modalLabels.datasetSplit = value;
+                    }
+                } else {
+                    // サブラベル（カテゴリ内単一選択）
+                    parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
+                    const index = modalLabels.subLabels.indexOf(value);
+                    if (index > -1) {
+                        modalLabels.subLabels.splice(index, 1);
+                    } else {
+                        option.classList.add('active');
+                        modalLabels.subLabels.push(value);
+                    }
+                }
+            }
+        });
+
+        // モーダル外クリックで閉じる
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('labelEditModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        function init() {
+            console.log('レビュー画面が初期化されました');
+            
+            // スクロール位置に応じて「先頭に戻る」ボタンの表示を制御
+            window.addEventListener('scroll', function() {
+                const backToTopButton = document.getElementById('backToTopButton');
+                if (window.pageYOffset > 300) {
+                    backToTopButton.style.display = 'block';
+                } else {
+                    backToTopButton.style.display = 'none';
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

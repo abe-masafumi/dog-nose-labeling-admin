@@ -476,6 +476,7 @@
                         <button class="export-button" onclick="exportData('yolo')">YOLO</button>
                     </div>
                     <button class="dataset-export" onclick="exportDataset()">📁 データセット出力</button>
+                    <a href="/review" class="nav-button" style="display: inline-block; margin-top: 10px; text-decoration: none;">🔍 レビュー画面</a>
                 </div>
 
                 <div class="shortcuts">
@@ -561,7 +562,24 @@
                 }
                 
                 document.getElementById('totalImages').textContent = images.length;
-                loadImage(0);
+                
+                // URLパラメータから画像IDを取得
+                const urlParams = new URLSearchParams(window.location.search);
+                const imageId = urlParams.get('imageId');
+                
+                if (imageId) {
+                    // 指定された画像IDに対応するインデックスを検索
+                    const targetIndex = images.findIndex(img => img.id == imageId);
+                    if (targetIndex !== -1) {
+                        loadImage(targetIndex);
+                        // URLパラメータをクリア（履歴を汚さないため）
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    } else {
+                        loadImage(0);
+                    }
+                } else {
+                    loadImage(0);
+                }
             } catch (error) {
                 console.error('画像の読み込みに失敗しました:', error);
                 document.getElementById('imageContainer').innerHTML = 
