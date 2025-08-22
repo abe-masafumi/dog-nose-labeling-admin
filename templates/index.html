@@ -296,33 +296,6 @@
             background: #5a6268;
         }
 
-        .custom-label-input {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .custom-label-input input {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .custom-label-input button {
-            padding: 8px 16px;
-            background-color: #667eea;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .custom-label-input button:hover {
-            background-color: #5a67d8;
-        }
 
         .dataset-export {
             width: 100%;
@@ -483,14 +456,6 @@
                             <span class="sub-label-option" data-label="dark_fur" onclick="toggleSubLabel('dark_fur')">暗い毛色 (N)</span>
                             <span class="sub-label-option" data-label="same_as_nose" onclick="toggleSubLabel('same_as_nose')">鼻と同じ毛色 (E)</span>
                         </div>
-                    </div>
-                    <div class="sub-label-group">
-                        <h4>カスタムラベル</h4>
-                        <div class="custom-label-input">
-                            <input type="text" id="customLabelInput" placeholder="カスタムラベルを入力">
-                            <button onclick="addCustomLabel()">追加</button>
-                        </div>
-                        <div id="customLabels" class="sub-label-options"></div>
                     </div>
                 </div>
 
@@ -669,13 +634,17 @@
             }
         }
 
-        // メインラベル設定
+        // メインラベル設定（任意選択可能）
         function setMainLabel(label) {
-            currentMainLabel = label;
+            if (currentMainLabel === label) {
+                currentMainLabel = null;
+            } else {
+                currentMainLabel = label;
+            }
             updateUI();
         }
 
-        // サブラベル切り替え（カテゴリ内単一選択）
+        // サブラベル切り替え（カテゴリ内単一選択・クリア可能）
         function toggleSubLabel(label) {
             // サブラベルのカテゴリ定義
             const labelCategories = {
@@ -685,13 +654,14 @@
                 'wet': 'condition',
                 'dry': 'condition',
                 'blurred': 'condition',
+                'ideal': 'condition',
                 'black': 'color',
                 'brown': 'color',
                 'gray': 'color',
                 'pink': 'color',
                 'marble': 'color',
-                'puppy': 'age',
-                'adult': 'age',
+                'large': 'nose_size',
+                'small': 'nose_size',
                 'light_fur': 'fur_color',
                 'dark_fur': 'fur_color',
                 'same_as_nose': 'fur_color'
@@ -700,27 +670,21 @@
             const currentCategory = labelCategories[label];
             
             if (currentCategory) {
-                // 同じカテゴリの他のラベルを削除
-                const categoryLabels = Object.keys(labelCategories).filter(
-                    key => labelCategories[key] === currentCategory
-                );
-                categoryLabels.forEach(categoryLabel => {
-                    const index = currentSubLabels.indexOf(categoryLabel);
-                    if (index > -1) {
-                        currentSubLabels.splice(index, 1);
-                    }
-                });
-                
-                // 現在のラベルが選択されていなかった場合のみ追加
-                if (!currentSubLabels.includes(label)) {
-                    currentSubLabels.push(label);
-                }
-            } else {
-                // カスタムラベルの場合は従来通りのトグル動作
-                const index = currentSubLabels.indexOf(label);
-                if (index > -1) {
-                    currentSubLabels.splice(index, 1);
+                // 現在のラベルが既に選択されている場合は削除（クリア）
+                const currentIndex = currentSubLabels.indexOf(label);
+                if (currentIndex > -1) {
+                    currentSubLabels.splice(currentIndex, 1);
                 } else {
+                    // 同じカテゴリの他のラベルをすべて削除してから新しいラベルを追加（単一選択）
+                    const categoryLabels = Object.keys(labelCategories).filter(
+                        key => labelCategories[key] === currentCategory
+                    );
+                    categoryLabels.forEach(categoryLabel => {
+                        const index = currentSubLabels.indexOf(categoryLabel);
+                        if (index > -1) {
+                            currentSubLabels.splice(index, 1);
+                        }
+                    });
                     currentSubLabels.push(label);
                 }
             }
@@ -898,49 +862,6 @@
             }
         });
 
-        // カスタムラベル追加
-        function addCustomLabel() {
-            const input = document.getElementById('customLabelInput');
-            const label = input.value.trim();
-            if (label && !currentSubLabels.includes(label)) {
-                const customLabelsContainer = document.getElementById('customLabels');
-                const labelElement = document.createElement('span');
-                labelElement.className = 'sub-label-option';
-                labelElement.setAttribute('data-label', label);
-                labelElement.textContent = label;
-                labelElement.onclick = () => toggleSubLabel(label);
-                customLabelsContainer.appendChild(labelElement);
-                
-                input.value = '';
-                toggleSubLabel(label);
-            }
-        }
-
-        // カスタムラベル表示更新
-        function updateCustomLabels() {
-            const customLabelsContainer = document.getElementById('customLabels');
-            customLabelsContainer.innerHTML = '';
-            
-            // 現在のサブラベルから既存の固定ラベル以外を抽出
-            const fixedLabels = ['front', 'side', 'tilted', 'wet', 'dry', 'blurred', 'ideal', 'black', 'brown', 'gray', 'pink', 'marble', 'large', 'small', 'light_fur', 'dark_fur', 'same_as_nose'];
-            const customLabels = currentSubLabels.filter(label => !fixedLabels.includes(label));
-            
-            customLabels.forEach(label => {
-                const labelElement = document.createElement('span');
-                labelElement.className = 'sub-label-option active';
-                labelElement.setAttribute('data-label', label);
-                labelElement.textContent = label;
-                labelElement.onclick = () => toggleSubLabel(label);
-                customLabelsContainer.appendChild(labelElement);
-            });
-        }
-
-        // UI状態更新を拡張
-        const originalUpdateUI = updateUI;
-        updateUI = function() {
-            originalUpdateUI();
-            updateCustomLabels();
-        };
 
         // 初期化実行
         init();
