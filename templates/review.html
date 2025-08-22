@@ -242,6 +242,30 @@
             color: #6c757d;
         }
 
+        /* 先頭に戻るボタン */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-to-top:hover {
+            background-color: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
         /* モーダルスタイル */
         .modal {
             display: none;
@@ -480,6 +504,11 @@
             </div>
         </div>
     </div>
+
+    <!-- 先頭に戻るボタン -->
+    <button id="backToTopButton" class="back-to-top" onclick="scrollToTop()" style="display: none;">
+        ↑ 先頭に戻る
+    </button>
 
     <!-- ラベル編集モーダル -->
     <div id="labelEditModal" class="modal">
@@ -766,6 +795,9 @@
         async function saveModalLabels() {
             if (!currentEditingImage) return;
             
+            // 現在のスクロール位置を保存
+            const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+            
             try {
                 const response = await fetch('/api/labels', {
                     method: 'POST',
@@ -784,7 +816,11 @@
                     // 保存成功
                     closeModal();
                     // 検索結果を再読み込み
-                    searchImages();
+                    await searchImages();
+                    // スクロール位置を復元
+                    setTimeout(() => {
+                        window.scrollTo(0, scrollPosition);
+                    }, 100);
                 } else {
                     alert('ラベルの保存に失敗しました');
                 }
@@ -842,8 +878,25 @@
             }
         });
 
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
         function init() {
             console.log('レビュー画面が初期化されました');
+            
+            // スクロール位置に応じて「先頭に戻る」ボタンの表示を制御
+            window.addEventListener('scroll', function() {
+                const backToTopButton = document.getElementById('backToTopButton');
+                if (window.pageYOffset > 300) {
+                    backToTopButton.style.display = 'block';
+                } else {
+                    backToTopButton.style.display = 'none';
+                }
+            });
         }
 
         document.addEventListener('DOMContentLoaded', init);
