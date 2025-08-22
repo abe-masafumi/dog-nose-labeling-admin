@@ -463,7 +463,24 @@
                         <div class="sub-label-options">
                             <span class="sub-label-option" data-label="black" onclick="toggleSubLabel('black')">黒 (K)</span>
                             <span class="sub-label-option" data-label="brown" onclick="toggleSubLabel('brown')">茶色 (R)</span>
+                            <span class="sub-label-option" data-label="gray" onclick="toggleSubLabel('gray')">灰色 (G)</span>
                             <span class="sub-label-option" data-label="pink" onclick="toggleSubLabel('pink')">ピンク (P)</span>
+                            <span class="sub-label-option" data-label="marble" onclick="toggleSubLabel('marble')">マーブル (M)</span>
+                        </div>
+                    </div>
+                    <div class="sub-label-group">
+                        <h4>年齢</h4>
+                        <div class="sub-label-options">
+                            <span class="sub-label-option" data-label="puppy" onclick="toggleSubLabel('puppy')">子犬 (U)</span>
+                            <span class="sub-label-option" data-label="adult" onclick="toggleSubLabel('adult')">成犬 (A)</span>
+                        </div>
+                    </div>
+                    <div class="sub-label-group">
+                        <h4>毛色</h4>
+                        <div class="sub-label-options">
+                            <span class="sub-label-option" data-label="light_fur" onclick="toggleSubLabel('light_fur')">明るい毛色 (L)</span>
+                            <span class="sub-label-option" data-label="dark_fur" onclick="toggleSubLabel('dark_fur')">暗い毛色 (N)</span>
+                            <span class="sub-label-option" data-label="same_as_nose" onclick="toggleSubLabel('same_as_nose')">鼻と同じ毛色 (E)</span>
                         </div>
                     </div>
                     <div class="sub-label-group">
@@ -794,6 +811,34 @@
                 case 'P':
                     toggleSubLabel('pink');
                     break;
+                case 'g':
+                case 'G':
+                    toggleSubLabel('gray');
+                    break;
+                case 'm':
+                case 'M':
+                    toggleSubLabel('marble');
+                    break;
+                case 'u':
+                case 'U':
+                    toggleSubLabel('puppy');
+                    break;
+                case 'a':
+                case 'A':
+                    toggleSubLabel('adult');
+                    break;
+                case 'l':
+                case 'L':
+                    toggleSubLabel('light_fur');
+                    break;
+                case 'n':
+                case 'N':
+                    toggleSubLabel('dark_fur');
+                    break;
+                case 'e':
+                case 'E':
+                    toggleSubLabel('same_as_nose');
+                    break;
                 case 'ArrowLeft':
                     previousImage();
                     break;
@@ -830,7 +875,7 @@
             customLabelsContainer.innerHTML = '';
             
             // 現在のサブラベルから既存の固定ラベル以外を抽出
-            const fixedLabels = ['front', 'side', 'tilted', 'wet', 'dry', 'blurred', 'black', 'brown', 'pink'];
+            const fixedLabels = ['front', 'side', 'tilted', 'wet', 'dry', 'blurred', 'black', 'brown', 'gray', 'pink', 'marble', 'puppy', 'adult', 'light_fur', 'dark_fur', 'same_as_nose'];
             const customLabels = currentSubLabels.filter(label => !fixedLabels.includes(label));
             
             customLabels.forEach(label => {
