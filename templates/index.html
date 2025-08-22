@@ -456,6 +456,7 @@
                             <span class="sub-label-option" data-label="wet" onclick="toggleSubLabel('wet')">濡れている (W)</span>
                             <span class="sub-label-option" data-label="dry" onclick="toggleSubLabel('dry')">乾いている (D)</span>
                             <span class="sub-label-option" data-label="blurred" onclick="toggleSubLabel('blurred')">ぼやけている (B)</span>
+                            <span class="sub-label-option" data-label="ideal" onclick="toggleSubLabel('ideal')">理想的 (I)</span>
                         </div>
                     </div>
                     <div class="sub-label-group">
@@ -469,16 +470,16 @@
                         </div>
                     </div>
                     <div class="sub-label-group">
-                        <h4>年齢</h4>
+                        <h4>鼻の大きさ</h4>
                         <div class="sub-label-options">
-                            <span class="sub-label-option" data-label="puppy" onclick="toggleSubLabel('puppy')">子犬 (U)</span>
-                            <span class="sub-label-option" data-label="adult" onclick="toggleSubLabel('adult')">成犬 (A)</span>
+                            <span class="sub-label-option" data-label="large" onclick="toggleSubLabel('large')">大きい (L)</span>
+                            <span class="sub-label-option" data-label="small" onclick="toggleSubLabel('small')">小さい (Q)</span>
                         </div>
                     </div>
                     <div class="sub-label-group">
                         <h4>毛色</h4>
                         <div class="sub-label-options">
-                            <span class="sub-label-option" data-label="light_fur" onclick="toggleSubLabel('light_fur')">明るい毛色 (L)</span>
+                            <span class="sub-label-option" data-label="light_fur" onclick="toggleSubLabel('light_fur')">明るい毛色 (J)</span>
                             <span class="sub-label-option" data-label="dark_fur" onclick="toggleSubLabel('dark_fur')">暗い毛色 (N)</span>
                             <span class="sub-label-option" data-label="same_as_nose" onclick="toggleSubLabel('same_as_nose')">鼻と同じ毛色 (E)</span>
                         </div>
@@ -861,16 +862,20 @@
                 case 'M':
                     toggleSubLabel('marble');
                     break;
-                case 'u':
-                case 'U':
-                    toggleSubLabel('puppy');
-                    break;
-                case 'a':
-                case 'A':
-                    toggleSubLabel('adult');
+                case 'i':
+                case 'I':
+                    toggleSubLabel('ideal');
                     break;
                 case 'l':
                 case 'L':
+                    toggleSubLabel('large');
+                    break;
+                case 'q':
+                case 'Q':
+                    toggleSubLabel('small');
+                    break;
+                case 'j':
+                case 'J':
                     toggleSubLabel('light_fur');
                     break;
                 case 'n':
@@ -917,7 +922,7 @@
             customLabelsContainer.innerHTML = '';
             
             // 現在のサブラベルから既存の固定ラベル以外を抽出
-            const fixedLabels = ['front', 'side', 'tilted', 'wet', 'dry', 'blurred', 'black', 'brown', 'gray', 'pink', 'marble', 'puppy', 'adult', 'light_fur', 'dark_fur', 'same_as_nose'];
+            const fixedLabels = ['front', 'side', 'tilted', 'wet', 'dry', 'blurred', 'ideal', 'black', 'brown', 'gray', 'pink', 'marble', 'large', 'small', 'light_fur', 'dark_fur', 'same_as_nose'];
             const customLabels = currentSubLabels.filter(label => !fixedLabels.includes(label));
             
             customLabels.forEach(label => {
