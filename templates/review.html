@@ -241,6 +241,151 @@
             padding: 40px;
             color: #6c757d;
         }
+
+        /* モーダルスタイル */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        .close:hover {
+            opacity: 0.7;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-image-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .modal-labels-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .modal-label-group {
+            margin-bottom: 20px;
+        }
+
+        .modal-label-group h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .modal-label-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .modal-label-option {
+            background-color: #e9ecef;
+            border: 2px solid #e9ecef;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+            font-size: 0.9em;
+        }
+
+        .modal-label-option:hover {
+            background-color: #dee2e6;
+        }
+
+        .modal-label-option.active {
+            background-color: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .modal-save-btn, .modal-cancel-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .modal-save-btn {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .modal-save-btn:hover {
+            background-color: #218838;
+        }
+
+        .modal-cancel-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .modal-cancel-btn:hover {
+            background-color: #5a6268;
+        }
     </style>
 </head>
 <body>
@@ -336,8 +481,100 @@
         </div>
     </div>
 
+    <!-- ラベル編集モーダル -->
+    <div id="labelEditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🏷️ ラベル編集</h2>
+                <button class="close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image-container">
+                    <img id="modalImage" class="modal-image" src="" alt="">
+                    <div id="modalFilename" style="margin-top: 10px; font-weight: bold; color: #333;"></div>
+                </div>
+                
+                <div class="modal-labels-section">
+                    <div class="modal-label-group">
+                        <h4>メインラベル</h4>
+                        <div class="modal-label-options" id="modalMainLabels">
+                            <div class="modal-label-option" data-value="nose">🐽 鼻あり</div>
+                            <div class="modal-label-option" data-value="non_nose">❌ 鼻なし</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>鼻の向き</h4>
+                        <div class="modal-label-options" id="modalOrientation">
+                            <div class="modal-label-option" data-value="front">正面</div>
+                            <div class="modal-label-option" data-value="side">横向き</div>
+                            <div class="modal-label-option" data-value="tilted">斜め</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>鮮明判定</h4>
+                        <div class="modal-label-options" id="modalClarity">
+                            <div class="modal-label-option" data-value="clear">鮮明</div>
+                            <div class="modal-label-option" data-value="blurred">ぼやけ</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>鼻の色</h4>
+                        <div class="modal-label-options" id="modalColor">
+                            <div class="modal-label-option" data-value="black">黒</div>
+                            <div class="modal-label-option" data-value="brown">茶色</div>
+                            <div class="modal-label-option" data-value="gray">灰色</div>
+                            <div class="modal-label-option" data-value="pink">ピンク</div>
+                            <div class="modal-label-option" data-value="marble">マーブル</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>鼻の大きさ</h4>
+                        <div class="modal-label-options" id="modalSize">
+                            <div class="modal-label-option" data-value="large">大きい</div>
+                            <div class="modal-label-option" data-value="small">小さい</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>毛色</h4>
+                        <div class="modal-label-options" id="modalFur">
+                            <div class="modal-label-option" data-value="light_fur">明るい毛色</div>
+                            <div class="modal-label-option" data-value="dark_fur">暗い毛色</div>
+                            <div class="modal-label-option" data-value="same_as_nose">鼻と同じ毛色</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-label-group">
+                        <h4>データセット分割</h4>
+                        <div class="modal-label-options" id="modalDataset">
+                            <div class="modal-label-option" data-value="train">Train</div>
+                            <div class="modal-label-option" data-value="val">Val</div>
+                            <div class="modal-label-option" data-value="test">Test</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="modal-cancel-btn" onclick="closeModal()">キャンセル</button>
+                    <button class="modal-save-btn" onclick="saveModalLabels()">💾 保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let selectedFilters = {
+            mainLabel: null,
+            subLabels: [],
+            datasetSplit: null
+        };
+
+        let currentEditingImage = null;
+        let modalLabels = {
             mainLabel: null,
             subLabels: [],
             datasetSplit: null
@@ -445,7 +682,7 @@
                 `;
                 
                 item.addEventListener('click', () => {
-                    window.location.href = `/?imageId=${result.id}`;
+                    openEditModal(result);
                 });
                 
                 grid.appendChild(item);
@@ -469,6 +706,141 @@
             document.getElementById('resultsContainer').innerHTML = '<div class="loading">フィルター条件を設定して検索ボタンを押してください</div>';
             document.getElementById('resultsCount').textContent = '検索を実行してください';
         }
+
+        function openEditModal(imageData) {
+            currentEditingImage = imageData;
+            
+            // 画像とファイル名を設定
+            document.getElementById('modalImage').src = `/images/${imageData.filename}`;
+            document.getElementById('modalFilename').textContent = imageData.filename;
+            
+            // 現在のラベルを設定
+            modalLabels = {
+                mainLabel: imageData.main_label,
+                subLabels: imageData.sub_labels ? [...imageData.sub_labels] : [],
+                datasetSplit: imageData.dataset_split
+            };
+            
+            // モーダル内のラベル選択状態を更新
+            updateModalLabels();
+            
+            // モーダルを表示
+            document.getElementById('labelEditModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('labelEditModal').style.display = 'none';
+            currentEditingImage = null;
+            modalLabels = {
+                mainLabel: null,
+                subLabels: [],
+                datasetSplit: null
+            };
+        }
+
+        function updateModalLabels() {
+            // 全てのモーダルラベルオプションをリセット
+            document.querySelectorAll('.modal-label-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            
+            // メインラベルを設定
+            if (modalLabels.mainLabel) {
+                const mainOption = document.querySelector(`#modalMainLabels .modal-label-option[data-value="${modalLabels.mainLabel}"]`);
+                if (mainOption) mainOption.classList.add('active');
+            }
+            
+            // サブラベルを設定
+            modalLabels.subLabels.forEach(subLabel => {
+                const subOption = document.querySelector(`.modal-label-option[data-value="${subLabel}"]`);
+                if (subOption) subOption.classList.add('active');
+            });
+            
+            // データセット分割を設定
+            if (modalLabels.datasetSplit) {
+                const datasetOption = document.querySelector(`#modalDataset .modal-label-option[data-value="${modalLabels.datasetSplit}"]`);
+                if (datasetOption) datasetOption.classList.add('active');
+            }
+        }
+
+        async function saveModalLabels() {
+            if (!currentEditingImage) return;
+            
+            try {
+                const response = await fetch('/api/labels', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image_path: currentEditingImage.filepath,
+                        main_label: modalLabels.mainLabel,
+                        sub_labels: modalLabels.subLabels,
+                        dataset_split: modalLabels.datasetSplit
+                    })
+                });
+                
+                if (response.ok) {
+                    // 保存成功
+                    closeModal();
+                    // 検索結果を再読み込み
+                    searchImages();
+                } else {
+                    alert('ラベルの保存に失敗しました');
+                }
+            } catch (error) {
+                console.error('保存エラー:', error);
+                alert('ラベルの保存中にエラーが発生しました');
+            }
+        }
+
+        // モーダル内のラベルクリックイベント
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal-label-option')) {
+                const option = event.target;
+                const value = option.getAttribute('data-value');
+                const parent = option.parentElement;
+                const parentId = parent.id;
+
+                if (parentId === 'modalMainLabels') {
+                    // メインラベル（単一選択）
+                    parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
+                    if (modalLabels.mainLabel === value) {
+                        modalLabels.mainLabel = null;
+                    } else {
+                        option.classList.add('active');
+                        modalLabels.mainLabel = value;
+                    }
+                } else if (parentId === 'modalDataset') {
+                    // データセット分割（単一選択）
+                    parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
+                    if (modalLabels.datasetSplit === value) {
+                        modalLabels.datasetSplit = null;
+                    } else {
+                        option.classList.add('active');
+                        modalLabels.datasetSplit = value;
+                    }
+                } else {
+                    // サブラベル（カテゴリ内単一選択）
+                    parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
+                    const index = modalLabels.subLabels.indexOf(value);
+                    if (index > -1) {
+                        modalLabels.subLabels.splice(index, 1);
+                    } else {
+                        option.classList.add('active');
+                        modalLabels.subLabels.push(value);
+                    }
+                }
+            }
+        });
+
+        // モーダル外クリックで閉じる
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('labelEditModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
 
         function init() {
             console.log('レビュー画面が初期化されました');
