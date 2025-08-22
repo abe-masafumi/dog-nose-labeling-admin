@@ -65,6 +65,10 @@ def register_images():
 def index():
     return render_template('index.html')
 
+@app.route('/review')
+def review():
+    return render_template('review.html')
+
 @app.route('/api/images')
 def get_images():
     conn = sqlite3.connect('labels.db')
@@ -255,6 +259,57 @@ def export_dataset():
         return send_file(zip_filename, as_attachment=True, as_attachment_filename=zip_filename)
     except Exception as e:
         return jsonify({'error': f'ZIPファイル作成エラー: {str(e)}'}), 500
+
+@app.route('/api/filter')
+def filter_images():
+    """フィルター条件に基づいて画像を検索"""
+    main_label = request.args.get('main_label')
+    sub_labels = request.args.getlist('sub_labels')
+    dataset_split = request.args.get('dataset_split')
+    
+    conn = sqlite3.connect('labels.db')
+    cursor = conn.cursor()
+    
+    query = '''
+        SELECT i.id, i.filename, i.filepath, 
+               l.main_label, l.sub_labels, l.dataset_split
+        FROM images i
+        LEFT JOIN labels l ON i.filepath = l.image_path
+        WHERE 1=1
+    '''
+    params = []
+    
+    if main_label:
+        query += ' AND l.main_label = ?'
+        params.append(main_label)
+    
+    if dataset_split:
+        query += ' AND l.dataset_split = ?'
+        params.append(dataset_split)
+    
+    if sub_labels:
+        for sub_label in sub_labels:
+            query += ' AND l.sub_labels LIKE ?'
+            params.append(f'%"{sub_label}"%')
+    
+    query += ' ORDER BY i.id'
+    
+    cursor.execute(query, params)
+    
+    results = []
+    for row in cursor.fetchall():
+        parsed_sub_labels = json.loads(row[4]) if row[4] else []
+        results.append({
+            'id': row[0],
+            'filename': row[1],
+            'filepath': row[2],
+            'main_label': row[3],
+            'sub_labels': parsed_sub_labels,
+            'dataset_split': row[5]
+        })
+    
+    conn.close()
+    return jsonify(results)
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):
