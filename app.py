@@ -6,6 +6,7 @@ import csv
 from datetime import datetime
 import shutil
 from pathlib import Path
+import random
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dog-nose-labeling-secret-key'
@@ -310,6 +311,98 @@ def filter_images():
     
     conn.close()
     return jsonify(results)
+
+@app.route('/api/auto-split', methods=['POST'])
+def auto_split_dataset():
+    """自動データセット分割"""
+    data = request.json
+    train_percent = data.get('train_percent', 80)
+    val_percent = data.get('val_percent', 10) 
+    test_percent = data.get('test_percent', 10)
+    overwrite_existing = data.get('overwrite_existing', True)
+    preview_only = data.get('preview_only', False)
+    
+    total = train_percent + val_percent + test_percent
+    if abs(total - 100) > 0.01:
+        return jsonify({'error': f'割合の合計が100%になりません: {total}%'}), 400
+    
+    if train_percent < 0 or val_percent < 0 or test_percent < 0:
+        return jsonify({'error': '割合は0以上で入力してください'}), 400
+    
+    conn = sqlite3.connect('labels.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT i.id, i.filepath, l.main_label, l.dataset_split
+        FROM images i
+        JOIN labels l ON i.filepath = l.image_path
+        WHERE l.main_label IS NOT NULL
+        ORDER BY i.id
+    ''')
+    
+    labeled_images = cursor.fetchall()
+    
+    if not labeled_images:
+        conn.close()
+        return jsonify({'error': 'メインラベルが設定された画像がありません'}), 400
+    
+    shuffled_images = list(labeled_images)
+    random.shuffle(shuffled_images)
+    
+    total_count = len(shuffled_images)
+    train_count = int(total_count * train_percent / 100)
+    val_count = int(total_count * val_percent / 100)
+    test_count = total_count - train_count - val_count
+    
+    train_images = shuffled_images[:train_count]
+    val_images = shuffled_images[train_count:train_count + val_count]
+    test_images = shuffled_images[train_count + val_count:]
+    
+    result = {
+        'total_images': total_count,
+        'train_count': len(train_images),
+        'val_count': len(val_images), 
+        'test_count': len(test_images),
+        'train_percent_actual': round(len(train_images) / total_count * 100, 1),
+        'val_percent_actual': round(len(val_images) / total_count * 100, 1),
+        'test_percent_actual': round(len(test_images) / total_count * 100, 1)
+    }
+    
+    if preview_only:
+        conn.close()
+        return jsonify(result)
+    
+    try:
+        for image_id, filepath, main_label, current_split in train_images:
+            cursor.execute('''
+                UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP
+                WHERE image_path = ?
+            ''', (filepath,))
+        
+        for image_id, filepath, main_label, current_split in val_images:
+            cursor.execute('''
+                UPDATE labels SET dataset_split = 'val', updated_at = CURRENT_TIMESTAMP
+                WHERE image_path = ?
+            ''', (filepath,))
+        
+        for image_id, filepath, main_label, current_split in test_images:
+            cursor.execute('''
+                UPDATE labels SET dataset_split = 'test', updated_at = CURRENT_TIMESTAMP
+                WHERE image_path = ?
+            ''', (filepath,))
+        
+        conn.commit()
+        result['success'] = True
+        result['message'] = 'データセット分割が完了しました'
+        
+    except Exception as e:
+        conn.rollback()
+        result['error'] = f'データベース更新エラー: {str(e)}'
+        return jsonify(result), 500
+    finally:
+        conn.close()
+    
+    return jsonify(result)
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):
