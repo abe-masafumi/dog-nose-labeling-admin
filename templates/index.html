@@ -296,6 +296,34 @@
             background: #5a6268;
         }
 
+        .custom-label-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .custom-label-input input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .custom-label-input button {
+            padding: 8px 16px;
+            background-color: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .custom-label-input button:hover {
+            background-color: #5a67d8;
+        }
+
         .dataset-export {
             width: 100%;
             padding: 10px;
@@ -417,18 +445,34 @@
                     <div class="sub-label-group">
                         <h4>鼻の向き</h4>
                         <div class="sub-label-options">
-                            <span class="sub-label-option" onclick="toggleSubLabel('front')">正面 (F)</span>
-                            <span class="sub-label-option" onclick="toggleSubLabel('side')">横向き (S)</span>
-                            <span class="sub-label-option" onclick="toggleSubLabel('tilted')">斜め (T)</span>
+                            <span class="sub-label-option" data-label="front" onclick="toggleSubLabel('front')">正面 (F)</span>
+                            <span class="sub-label-option" data-label="side" onclick="toggleSubLabel('side')">横向き (S)</span>
+                            <span class="sub-label-option" data-label="tilted" onclick="toggleSubLabel('tilted')">斜め (T)</span>
                         </div>
                     </div>
                     <div class="sub-label-group">
                         <h4>鼻の状態</h4>
                         <div class="sub-label-options">
-                            <span class="sub-label-option" onclick="toggleSubLabel('wet')">濡れている (W)</span>
-                            <span class="sub-label-option" onclick="toggleSubLabel('dry')">乾いている (D)</span>
-                            <span class="sub-label-option" onclick="toggleSubLabel('blurred')">ぼやけている (B)</span>
+                            <span class="sub-label-option" data-label="wet" onclick="toggleSubLabel('wet')">濡れている (W)</span>
+                            <span class="sub-label-option" data-label="dry" onclick="toggleSubLabel('dry')">乾いている (D)</span>
+                            <span class="sub-label-option" data-label="blurred" onclick="toggleSubLabel('blurred')">ぼやけている (B)</span>
                         </div>
+                    </div>
+                    <div class="sub-label-group">
+                        <h4>鼻の色</h4>
+                        <div class="sub-label-options">
+                            <span class="sub-label-option" data-label="black" onclick="toggleSubLabel('black')">黒 (K)</span>
+                            <span class="sub-label-option" data-label="brown" onclick="toggleSubLabel('brown')">茶色 (R)</span>
+                            <span class="sub-label-option" data-label="pink" onclick="toggleSubLabel('pink')">ピンク (P)</span>
+                        </div>
+                    </div>
+                    <div class="sub-label-group">
+                        <h4>カスタムラベル</h4>
+                        <div class="custom-label-input">
+                            <input type="text" id="customLabelInput" placeholder="カスタムラベルを入力">
+                            <button onclick="addCustomLabel()">追加</button>
+                        </div>
+                        <div id="customLabels" class="sub-label-options"></div>
                     </div>
                 </div>
 
@@ -448,6 +492,7 @@
                     <div class="export-buttons">
                         <button class="export-button" onclick="exportData('json')">JSON</button>
                         <button class="export-button" onclick="exportData('csv')">CSV</button>
+                        <button class="export-button" onclick="exportData('yolo')">YOLO</button>
                     </div>
                     <button class="dataset-export" onclick="exportDataset()">📁 データセット出力</button>
                 </div>
@@ -485,6 +530,18 @@
                     <div class="shortcut-item">
                         <span>ぼやけている:</span>
                         <span class="shortcut-key">B</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>黒:</span>
+                        <span class="shortcut-key">K</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>茶色:</span>
+                        <span class="shortcut-key">R</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>ピンク:</span>
+                        <span class="shortcut-key">P</span>
                     </div>
                     <div class="shortcut-item">
                         <span>前の画像:</span>
@@ -578,8 +635,8 @@
             // サブラベルの状態更新
             document.querySelectorAll('.sub-label-option').forEach(option => {
                 option.classList.remove('active');
-                const label = option.textContent.split(' ')[0];
-                if (currentSubLabels.includes(label)) {
+                const label = option.getAttribute('data-label');
+                if (label && currentSubLabels.includes(label)) {
                     option.classList.add('active');
                 }
             });
@@ -725,6 +782,18 @@
                 case 'B':
                     toggleSubLabel('blurred');
                     break;
+                case 'k':
+                case 'K':
+                    toggleSubLabel('black');
+                    break;
+                case 'r':
+                case 'R':
+                    toggleSubLabel('brown');
+                    break;
+                case 'p':
+                case 'P':
+                    toggleSubLabel('pink');
+                    break;
                 case 'ArrowLeft':
                     previousImage();
                     break;
@@ -736,6 +805,50 @@
                     break;
             }
         });
+
+        // カスタムラベル追加
+        function addCustomLabel() {
+            const input = document.getElementById('customLabelInput');
+            const label = input.value.trim();
+            if (label && !currentSubLabels.includes(label)) {
+                const customLabelsContainer = document.getElementById('customLabels');
+                const labelElement = document.createElement('span');
+                labelElement.className = 'sub-label-option';
+                labelElement.setAttribute('data-label', label);
+                labelElement.textContent = label;
+                labelElement.onclick = () => toggleSubLabel(label);
+                customLabelsContainer.appendChild(labelElement);
+                
+                input.value = '';
+                toggleSubLabel(label);
+            }
+        }
+
+        // カスタムラベル表示更新
+        function updateCustomLabels() {
+            const customLabelsContainer = document.getElementById('customLabels');
+            customLabelsContainer.innerHTML = '';
+            
+            // 現在のサブラベルから既存の固定ラベル以外を抽出
+            const fixedLabels = ['front', 'side', 'tilted', 'wet', 'dry', 'blurred', 'black', 'brown', 'pink'];
+            const customLabels = currentSubLabels.filter(label => !fixedLabels.includes(label));
+            
+            customLabels.forEach(label => {
+                const labelElement = document.createElement('span');
+                labelElement.className = 'sub-label-option active';
+                labelElement.setAttribute('data-label', label);
+                labelElement.textContent = label;
+                labelElement.onclick = () => toggleSubLabel(label);
+                customLabelsContainer.appendChild(labelElement);
+            });
+        }
+
+        // UI状態更新を拡張
+        const originalUpdateUI = updateUI;
+        updateUI = function() {
+            originalUpdateUI();
+            updateCustomLabels();
+        };
 
         // 初期化実行
         init();

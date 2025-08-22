@@ -189,6 +189,14 @@ def export_data(format):
                 ])
         return send_file(filename, as_attachment=True)
     
+    elif format == 'yolo':
+        filename = f'yolo_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.txt'
+        with open(filename, 'w', encoding='utf-8') as f:
+            for item in data:
+                if item['main_label'] == 'nose':
+                    f.write(f"0 0.5 0.5 1.0 1.0  # {item['filename']}\n")
+        return send_file(filename, as_attachment=True)
+    
     return jsonify({'error': '無効なフォーマットです'}), 400
 
 @app.route('/api/export/dataset')
@@ -208,27 +216,45 @@ def export_dataset():
     if os.path.exists(dataset_dir):
         shutil.rmtree(dataset_dir)
     
-    for row in cursor.fetchall():
+    rows = cursor.fetchall()
+    if not rows:
+        conn.close()
+        return jsonify({'error': 'エクスポートするデータがありません'}), 400
+    
+    for row in rows:
         filepath, main_label, dataset_split = row
         
+        if not os.path.exists(filepath):
+            continue
+            
         output_dir = os.path.join(dataset_dir, dataset_split, main_label)
         os.makedirs(output_dir, exist_ok=True)
         
         filename = os.path.basename(filepath)
-        shutil.copy2(filepath, os.path.join(output_dir, filename))
+        try:
+            shutil.copy2(filepath, os.path.join(output_dir, filename))
+        except Exception as e:
+            print(f"ファイルコピーエラー: {filepath} -> {e}")
+            continue
     
     conn.close()
     
     import zipfile
     zip_filename = f'dataset_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
-    with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk(dataset_dir):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, dataset_dir)
-                zipf.write(file_path, arcname)
-    
-    return send_file(zip_filename, as_attachment=True)
+    try:
+        with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(dataset_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if os.path.exists(file_path):
+                        arcname = os.path.relpath(file_path, dataset_dir)
+                        zipf.write(file_path, arcname)
+        
+        shutil.rmtree(dataset_dir)
+        
+        return send_file(zip_filename, as_attachment=True, as_attachment_filename=zip_filename)
+    except Exception as e:
+        return jsonify({'error': f'ZIPファイル作成エラー: {str(e)}'}), 500
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):
