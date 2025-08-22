@@ -674,14 +674,56 @@
             updateUI();
         }
 
-        // サブラベル切り替え
+        // サブラベル切り替え（カテゴリ内単一選択）
         function toggleSubLabel(label) {
-            const index = currentSubLabels.indexOf(label);
-            if (index > -1) {
-                currentSubLabels.splice(index, 1);
+            // サブラベルのカテゴリ定義
+            const labelCategories = {
+                'front': 'orientation',
+                'side': 'orientation', 
+                'tilted': 'orientation',
+                'wet': 'condition',
+                'dry': 'condition',
+                'blurred': 'condition',
+                'black': 'color',
+                'brown': 'color',
+                'gray': 'color',
+                'pink': 'color',
+                'marble': 'color',
+                'puppy': 'age',
+                'adult': 'age',
+                'light_fur': 'fur_color',
+                'dark_fur': 'fur_color',
+                'same_as_nose': 'fur_color'
+            };
+            
+            const currentCategory = labelCategories[label];
+            
+            if (currentCategory) {
+                // 同じカテゴリの他のラベルを削除
+                const categoryLabels = Object.keys(labelCategories).filter(
+                    key => labelCategories[key] === currentCategory
+                );
+                categoryLabels.forEach(categoryLabel => {
+                    const index = currentSubLabels.indexOf(categoryLabel);
+                    if (index > -1) {
+                        currentSubLabels.splice(index, 1);
+                    }
+                });
+                
+                // 現在のラベルが選択されていなかった場合のみ追加
+                if (!currentSubLabels.includes(label)) {
+                    currentSubLabels.push(label);
+                }
             } else {
-                currentSubLabels.push(label);
+                // カスタムラベルの場合は従来通りのトグル動作
+                const index = currentSubLabels.indexOf(label);
+                if (index > -1) {
+                    currentSubLabels.splice(index, 1);
+                } else {
+                    currentSubLabels.push(label);
+                }
             }
+            
             updateUI();
         }
 
