@@ -424,12 +424,10 @@
                         </div>
                     </div>
                     <div class="sub-label-group">
-                        <h4>鼻の状態</h4>
+                        <h4>鮮明判定</h4>
                         <div class="sub-label-options">
-                            <span class="sub-label-option" data-label="wet" onclick="toggleSubLabel('wet')">濡れている (W)</span>
-                            <span class="sub-label-option" data-label="dry" onclick="toggleSubLabel('dry')">乾いている (D)</span>
-                            <span class="sub-label-option" data-label="blurred" onclick="toggleSubLabel('blurred')">ぼやけている (B)</span>
-                            <span class="sub-label-option" data-label="ideal" onclick="toggleSubLabel('ideal')">理想的 (I)</span>
+                            <span class="sub-label-option" data-label="clear" onclick="toggleSubLabel('clear')">鮮明 (C)</span>
+                            <span class="sub-label-option" data-label="blurred" onclick="toggleSubLabel('blurred')">ぼやけ (B)</span>
                         </div>
                     </div>
                     <div class="sub-label-group">
@@ -651,10 +649,8 @@
                 'front': 'orientation',
                 'side': 'orientation', 
                 'tilted': 'orientation',
-                'wet': 'condition',
-                'dry': 'condition',
-                'blurred': 'condition',
-                'ideal': 'condition',
+                'clear': 'clarity',
+                'blurred': 'clarity',
                 'black': 'color',
                 'brown': 'color',
                 'gray': 'color',
@@ -794,13 +790,9 @@
                 case 'T':
                     toggleSubLabel('tilted');
                     break;
-                case 'w':
-                case 'W':
-                    toggleSubLabel('wet');
-                    break;
-                case 'd':
-                case 'D':
-                    toggleSubLabel('dry');
+                case 'c':
+                case 'C':
+                    toggleSubLabel('clear');
                     break;
                 case 'b':
                 case 'B':
@@ -825,10 +817,6 @@
                 case 'm':
                 case 'M':
                     toggleSubLabel('marble');
-                    break;
-                case 'i':
-                case 'I':
-                    toggleSubLabel('ideal');
                     break;
                 case 'l':
                 case 'L':
