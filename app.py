@@ -227,12 +227,7 @@ def export_dataset():
         SELECT i.filepath, l.main_label, l.dataset_split, l.bbox, l.is_completed
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
-        WHERE (
-            (l.main_label = 'nose' AND l.bbox IS NOT NULL AND l.bbox != '')
-            OR (l.main_label != 'nose' AND l.is_completed = 1)
-            OR (l.main_label IS NULL OR l.main_label = '')
-        )
-        AND l.dataset_split IS NOT NULL
+        WHERE l.is_completed = 1 AND l.dataset_split IS NOT NULL
     ''')
     
     base_dir = 'data'
