@@ -388,17 +388,19 @@ def auto_split_dataset():
         SELECT i.id, i.filepath, l.main_label, l.dataset_split
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
-        WHERE l.main_label IS NOT NULL
+        WHERE l.is_completed = 1
         ORDER BY i.id
     ''')
     
-    labeled_images = cursor.fetchall()
+    completed_images = cursor.fetchall()
     
-    if not labeled_images:
+    if not completed_images:
         conn.close()
-        return jsonify({'error': 'メインラベルが設定された画像がありません'}), 400
+        return jsonify({'error': '作業済みの画像がありません'}), 400
     
-    shuffled_images = list(labeled_images)
+    shuffled_images = list(completed_images)
+    
+    shuffled_images = list(completed_images)
     random.shuffle(shuffled_images)
     
     total_count = len(shuffled_images)
