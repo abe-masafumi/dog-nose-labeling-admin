@@ -146,6 +146,7 @@ def save_label():
     main_label = data.get('main_label')
     sub_labels = json.dumps(data.get('sub_labels', []))
     dataset_split = data.get('dataset_split')
+    is_reviewed = data.get('is_reviewed', 1)  # Default to 1 (reviewed) when saving
     
     conn = sqlite3.connect('labels.db')
     cursor = conn.cursor()
@@ -153,8 +154,8 @@ def save_label():
     cursor.execute('''
         INSERT OR REPLACE INTO labels 
         (image_path, main_label, sub_labels, dataset_split, is_reviewed, updated_at)
-        VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
-    ''', (image_path, main_label, sub_labels, dataset_split))
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ''', (image_path, main_label, sub_labels, dataset_split, is_reviewed))
     
     conn.commit()
     conn.close()
@@ -287,7 +288,7 @@ def filter_images():
     
     query = '''
         SELECT i.id, i.filename, i.filepath, 
-               l.main_label, l.sub_labels, l.dataset_split
+               l.main_label, l.sub_labels, l.dataset_split, l.is_reviewed
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         WHERE 1=1
@@ -320,7 +321,8 @@ def filter_images():
             'filepath': row[2],
             'main_label': row[3],
             'sub_labels': parsed_sub_labels,
-            'dataset_split': row[5]
+            'dataset_split': row[5],
+            'is_reviewed': row[6]
         })
     
     conn.close()
@@ -425,4 +427,4 @@ def serve_image(filename):
 if __name__ == '__main__':
     init_db()
     register_images()
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    app.run(debug=True, host='0.0.0.0', port=8081)

@@ -226,6 +226,16 @@
             color: white;
         }
 
+        .label-tag.reviewed {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .label-tag.unreviewed {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
         .no-results {
             text-align: center;
             padding: 40px;
@@ -581,6 +591,14 @@
                             <div class="modal-label-option" data-value="test">Test</div>
                         </div>
                     </div>
+
+                    <div class="modal-label-group">
+                        <h4>チェック状態</h4>
+                        <div class="modal-label-options" id="modalReviewed">
+                            <div class="modal-label-option" data-value="1">✓ チェック済み</div>
+                            <div class="modal-label-option" data-value="0">未チェック</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="modal-actions">
@@ -602,7 +620,8 @@
         let modalLabels = {
             mainLabel: null,
             subLabels: [],
-            datasetSplit: null
+            datasetSplit: null,
+            isReviewed: 1
         };
 
         document.addEventListener('click', function(event) {
@@ -694,6 +713,10 @@
                     `<span class="label-tag">${label}</span>`
                 ).join('');
                 
+                const reviewedStatusHtml = result.is_reviewed ? 
+                    '<span class="label-tag reviewed">✓ チェック済み</span>' : 
+                    '<span class="label-tag unreviewed">未チェック</span>';
+                
                 item.innerHTML = `
                     <img src="/images/${result.filename}" alt="${result.filename}" class="result-image" onerror="this.style.display='none'">
                     <div class="result-info">
@@ -702,6 +725,7 @@
                             ${result.main_label ? `<span class="label-tag main">${result.main_label}</span>` : ''}
                             ${subLabelsHtml}
                             ${result.dataset_split ? `<span class="label-tag dataset">${result.dataset_split}</span>` : ''}
+                            ${reviewedStatusHtml}
                         </div>
                     </div>
                 `;
@@ -743,7 +767,8 @@
             modalLabels = {
                 mainLabel: imageData.main_label,
                 subLabels: imageData.sub_labels ? [...imageData.sub_labels] : [],
-                datasetSplit: imageData.dataset_split
+                datasetSplit: imageData.dataset_split,
+                isReviewed: imageData.is_reviewed || 0
             };
             
             // モーダル内のラベル選択状態を更新
@@ -759,7 +784,8 @@
             modalLabels = {
                 mainLabel: null,
                 subLabels: [],
-                datasetSplit: null
+                datasetSplit: null,
+                isReviewed: 1
             };
         }
 
@@ -786,6 +812,10 @@
                 const datasetOption = document.querySelector(`#modalDataset .modal-label-option[data-value="${modalLabels.datasetSplit}"]`);
                 if (datasetOption) datasetOption.classList.add('active');
             }
+
+            // チェック状態を設定
+            const reviewedOption = document.querySelector(`#modalReviewed .modal-label-option[data-value="${modalLabels.isReviewed}"]`);
+            if (reviewedOption) reviewedOption.classList.add('active');
         }
 
         async function saveModalLabels() {
@@ -804,7 +834,8 @@
                         image_path: currentEditingImage.filepath,
                         main_label: modalLabels.mainLabel,
                         sub_labels: modalLabels.subLabels,
-                        dataset_split: modalLabels.datasetSplit
+                        dataset_split: modalLabels.datasetSplit,
+                        is_reviewed: modalLabels.isReviewed
                     })
                 });
                 
@@ -851,6 +882,16 @@
                     } else {
                         option.classList.add('active');
                         modalLabels.datasetSplit = value;
+                    }
+                } else if (parentId === 'modalReviewed') {
+                    // チェック状態（単一選択）
+                    parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
+                    const newValue = parseInt(value);
+                    if (modalLabels.isReviewed === newValue) {
+                        modalLabels.isReviewed = 1; // Default to reviewed
+                    } else {
+                        option.classList.add('active');
+                        modalLabels.isReviewed = newValue;
                     }
                 } else {
                     // サブラベル（カテゴリ内単一選択）
