@@ -22,6 +22,7 @@ def init_db():
             main_label TEXT,
             sub_labels TEXT,
             dataset_split TEXT,
+            bbox TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -77,12 +78,11 @@ def get_images():
     
     cursor.execute('''
         SELECT i.id, i.filename, i.filepath, 
-               l.main_label, l.sub_labels, l.dataset_split
+               l.main_label, l.sub_labels, l.dataset_split, l.bbox, l.is_completed
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         ORDER BY i.id
     ''')
-    
     images = []
     for row in cursor.fetchall():
         images.append({
@@ -91,9 +91,10 @@ def get_images():
             'filepath': row[2],
             'main_label': row[3],
             'sub_labels': row[4],
-            'dataset_split': row[5]
+            'dataset_split': row[5],
+            'bbox': row[6],
+            'is_completed': row[7]
         })
-    
     conn.close()
     return jsonify(images)
 
@@ -104,12 +105,11 @@ def get_image(image_id):
     
     cursor.execute('''
         SELECT i.id, i.filename, i.filepath, 
-               l.main_label, l.sub_labels, l.dataset_split
+               l.main_label, l.sub_labels, l.dataset_split, l.bbox
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         WHERE i.id = ?
     ''', (image_id,))
-    
     row = cursor.fetchone()
     if row:
         image_data = {
@@ -118,11 +118,11 @@ def get_image(image_id):
             'filepath': row[2],
             'main_label': row[3],
             'sub_labels': row[4],
-            'dataset_split': row[5]
+            'dataset_split': row[5],
+            'bbox': row[6]
         }
         conn.close()
         return jsonify(image_data)
-    
     conn.close()
     return jsonify({'error': '画像が見つかりません'}), 404
 
@@ -133,19 +133,26 @@ def save_label():
     main_label = data.get('main_label')
     sub_labels = json.dumps(data.get('sub_labels', []))
     dataset_split = data.get('dataset_split')
-    
+    bbox = data.get('bbox')
+    if bbox is not None and not isinstance(bbox, str):
+        bbox = json.dumps(bbox)
     conn = sqlite3.connect('labels.db')
     cursor = conn.cursor()
-    
+    # is_completed=1を必ずセット
+    # 既存レコードがあればUPDATE、なければINSERT
     cursor.execute('''
-        INSERT OR REPLACE INTO labels 
-        (image_path, main_label, sub_labels, dataset_split, updated_at)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-    ''', (image_path, main_label, sub_labels, dataset_split))
-    
+        INSERT INTO labels (image_path, main_label, sub_labels, dataset_split, bbox, is_completed, updated_at)
+        VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT(image_path) DO UPDATE SET
+            main_label=excluded.main_label,
+            sub_labels=excluded.sub_labels,
+            dataset_split=excluded.dataset_split,
+            bbox=excluded.bbox,
+            is_completed=1,
+            updated_at=CURRENT_TIMESTAMP
+    ''', (image_path, main_label, sub_labels, dataset_split, bbox))
     conn.commit()
     conn.close()
-    
     return jsonify({'success': True})
 
 @app.route('/api/export/<format>')
@@ -154,10 +161,14 @@ def export_data(format):
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT i.filename, i.filepath, l.main_label, l.sub_labels, l.dataset_split
+        SELECT i.filename, i.filepath, l.main_label, l.sub_labels, l.dataset_split, l.bbox, l.is_completed
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
-        WHERE l.main_label IS NOT NULL
+        WHERE (
+            (l.main_label = 'nose' AND l.bbox IS NOT NULL AND l.bbox != '')
+            OR (l.main_label != 'nose' AND l.is_completed = 1)
+            OR (l.main_label IS NULL OR l.main_label = '')
+        )
     ''')
     
     data = []
@@ -168,7 +179,9 @@ def export_data(format):
             'filepath': row[1],
             'main_label': row[2],
             'sub_labels': sub_labels,
-            'dataset_split': row[4]
+            'dataset_split': row[4],
+            'bbox': row[5],
+            'is_completed': row[6]
         })
     
     conn.close()
@@ -199,7 +212,7 @@ def export_data(format):
         with open(filename, 'w', encoding='utf-8') as f:
             for item in data:
                 if item['main_label'] == 'nose':
-                    f.write(f"0 0.5 0.5 1.0 1.0  # {item['filename']}\n")
+                    f.write(f"0 0.5 0.5 1.0 1.0  # {item['filename']} main_label:{item['main_label']}\n")
         return send_file(filename, as_attachment=True)
     
     return jsonify({'error': '無効なフォーマットです'}), 400
@@ -211,36 +224,72 @@ def export_dataset():
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT i.filepath, l.main_label, l.dataset_split
+        SELECT i.filepath, l.main_label, l.dataset_split, l.bbox, l.is_completed
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
-        WHERE l.main_label IS NOT NULL AND l.dataset_split IS NOT NULL
+        WHERE l.is_completed = 1 AND l.dataset_split IS NOT NULL
     ''')
     
-    dataset_dir = 'dataset'
-    if os.path.exists(dataset_dir):
-        shutil.rmtree(dataset_dir)
-    
+    base_dir = 'data'
+    images_dir = os.path.join(base_dir, 'images')
+    labels_dir = os.path.join(base_dir, 'labels')
+    # 既存ディレクトリ削除
+    if os.path.exists(base_dir):
+        shutil.rmtree(base_dir)
+
     rows = cursor.fetchall()
     if not rows:
         conn.close()
         return jsonify({'error': 'エクスポートするデータがありません'}), 400
-    
+
     for row in rows:
-        filepath, main_label, dataset_split = row
-        
-        if not os.path.exists(filepath):
+        filepath, main_label, dataset_split, bbox, is_completed = row
+        if not os.path.exists(filepath) or not dataset_split:
             continue
-            
-        output_dir = os.path.join(dataset_dir, dataset_split, main_label)
-        os.makedirs(output_dir, exist_ok=True)
-        
+        # 画像コピー
+        img_out_dir = os.path.join(images_dir, dataset_split)
+        os.makedirs(img_out_dir, exist_ok=True)
         filename = os.path.basename(filepath)
         try:
-            shutil.copy2(filepath, os.path.join(output_dir, filename))
+            shutil.copy2(filepath, os.path.join(img_out_dir, filename))
         except Exception as e:
             print(f"ファイルコピーエラー: {filepath} -> {e}")
             continue
+        # YOLOラベル出力
+        label_out_dir = os.path.join(labels_dir, dataset_split)
+        os.makedirs(label_out_dir, exist_ok=True)
+        label_path = os.path.join(label_out_dir, os.path.splitext(filename)[0] + '.txt')
+        yolo_lines = []
+        # bboxがあればYOLO形式で出力
+        if bbox:
+            try:
+                bbox_data = json.loads(bbox) if isinstance(bbox, str) else bbox
+                # bboxは[x, y, w, h] or dict型想定
+                if isinstance(bbox_data, dict):
+                    x = bbox_data.get('x')
+                    y = bbox_data.get('y')
+                    w = bbox_data.get('width')
+                    h = bbox_data.get('height')
+                elif isinstance(bbox_data, list) and len(bbox_data) == 4:
+                    x, y, w, h = bbox_data
+                else:
+                    x = y = w = h = None
+                # YOLO形式: class x_center y_center width height (正規化済み)
+                if None not in (x, y, w, h):
+                    # 画像サイズ取得
+                    from PIL import Image
+                    with Image.open(filepath) as im:
+                        img_w, img_h = im.size
+                    x_center = (x + w/2) / img_w
+                    y_center = (y + h/2) / img_h
+                    w_norm = w / img_w
+                    h_norm = h / img_h
+                    yolo_lines.append(f"0 {x_center:.6f} {y_center:.6f} {w_norm:.6f} {h_norm:.6f}")
+            except Exception as e:
+                print(f"YOLOラベル変換エラー: {filepath} -> {e}")
+        # bboxがない場合は空ファイル
+        with open(label_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(yolo_lines))
     
     conn.close()
     
@@ -248,16 +297,14 @@ def export_dataset():
     zip_filename = f'dataset_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
     try:
         with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for root, dirs, files in os.walk(dataset_dir):
+            for root, dirs, files in os.walk(base_dir):
                 for file in files:
                     file_path = os.path.join(root, file)
                     if os.path.exists(file_path):
-                        arcname = os.path.relpath(file_path, dataset_dir)
+                        arcname = os.path.relpath(file_path, base_dir)
                         zipf.write(file_path, arcname)
-        
-        shutil.rmtree(dataset_dir)
-        
-        return send_file(zip_filename, as_attachment=True, as_attachment_filename=zip_filename)
+        shutil.rmtree(base_dir)
+        return send_file(zip_filename, as_attachment=True, download_name=zip_filename)
     except Exception as e:
         return jsonify({'error': f'ZIPファイル作成エラー: {str(e)}'}), 500
 
@@ -336,17 +383,19 @@ def auto_split_dataset():
         SELECT i.id, i.filepath, l.main_label, l.dataset_split
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
-        WHERE l.main_label IS NOT NULL
+        WHERE l.is_completed = 1
         ORDER BY i.id
     ''')
     
-    labeled_images = cursor.fetchall()
+    completed_images = cursor.fetchall()
     
-    if not labeled_images:
+    if not completed_images:
         conn.close()
-        return jsonify({'error': 'メインラベルが設定された画像がありません'}), 400
+        return jsonify({'error': '作業済みの画像がありません'}), 400
     
-    shuffled_images = list(labeled_images)
+    shuffled_images = list(completed_images)
+    
+    shuffled_images = list(completed_images)
     random.shuffle(shuffled_images)
     
     total_count = len(shuffled_images)
