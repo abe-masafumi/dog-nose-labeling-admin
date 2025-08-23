@@ -220,7 +220,7 @@ def export_data(format):
 
 @app.route('/api/export/dataset')
 def export_dataset():
-    """機械学習用フォルダ分割出力"""
+    """YOLO形式データセットエクスポート"""
     conn = sqlite3.connect('labels.db')
     cursor = conn.cursor()
     
@@ -240,27 +240,51 @@ def export_dataset():
         conn.close()
         return jsonify({'error': 'エクスポートするデータがありません'}), 400
     
+    for split in ['train', 'val', 'test']:
+        os.makedirs(os.path.join(dataset_dir, 'images', split), exist_ok=True)
+        os.makedirs(os.path.join(dataset_dir, 'labels', split), exist_ok=True)
+    
     for row in rows:
         filepath, main_label, dataset_split = row
         
         if not os.path.exists(filepath):
             continue
             
-        label_folder = main_label if main_label else "non_nose"
-        output_dir = os.path.join(dataset_dir, dataset_split, label_folder)
-        os.makedirs(output_dir, exist_ok=True)
-        
         filename = os.path.basename(filepath)
+        filename_no_ext = os.path.splitext(filename)[0]
+        
+        image_output_dir = os.path.join(dataset_dir, 'images', dataset_split)
         try:
-            shutil.copy2(filepath, os.path.join(output_dir, filename))
+            shutil.copy2(filepath, os.path.join(image_output_dir, filename))
         except Exception as e:
             print(f"ファイルコピーエラー: {filepath} -> {e}")
             continue
+        
+        label_output_dir = os.path.join(dataset_dir, 'labels', dataset_split)
+        label_filename = f"{filename_no_ext}.txt"
+        
+        class_id = 0 if main_label == 'nose' else 1
+        
+        with open(os.path.join(label_output_dir, label_filename), 'w') as f:
+            f.write(str(class_id))
+    
+    dataset_yaml_content = f"""# YOLO dataset configuration
+path: {os.path.abspath(dataset_dir)}
+train: images/train
+val: images/val
+test: images/test
+
+nc: 2
+names: ['nose', 'non_nose']
+"""
+    
+    with open(os.path.join(dataset_dir, 'dataset.yaml'), 'w') as f:
+        f.write(dataset_yaml_content)
     
     conn.close()
     
     import zipfile
-    zip_filename = f'dataset_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
+    zip_filename = f'yolo_dataset_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
     try:
         with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(dataset_dir):
