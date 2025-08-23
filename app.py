@@ -7,9 +7,31 @@ from datetime import datetime
 import shutil
 from pathlib import Path
 import random
+from PIL import Image
+import numpy as np
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dog-nose-labeling-secret-key'
+
+def calculate_bbox_from_crop(original_path, cropped_path):
+    """Calculate normalized bbox coordinates from original and cropped images"""
+    try:
+        original = Image.open(original_path)
+        cropped = Image.open(cropped_path)
+        
+        orig_width, orig_height = original.size
+        crop_width, crop_height = cropped.size
+        
+        x_center = 0.5
+        y_center = 0.5
+        
+        width = crop_width / orig_width
+        height = crop_height / orig_height
+        
+        return x_center, y_center, width, height
+    except Exception as e:
+        print(f"Error calculating bbox: {e}")
+        return None, None, None, None
 
 def init_db():
     conn = sqlite3.connect('labels.db')
@@ -40,6 +62,14 @@ def init_db():
     
     try:
         cursor.execute('ALTER TABLE labels ADD COLUMN is_reviewed INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
+    
+    try:
+        cursor.execute('ALTER TABLE labels ADD COLUMN x_center REAL')
+        cursor.execute('ALTER TABLE labels ADD COLUMN y_center REAL') 
+        cursor.execute('ALTER TABLE labels ADD COLUMN width REAL')
+        cursor.execute('ALTER TABLE labels ADD COLUMN height REAL')
     except sqlite3.OperationalError:
         pass
     
@@ -88,7 +118,8 @@ def get_images():
     
     cursor.execute('''
         SELECT i.id, i.filename, i.filepath, 
-               l.main_label, l.sub_labels, l.dataset_split, l.is_reviewed
+               l.main_label, l.sub_labels, l.dataset_split, l.is_reviewed,
+               l.x_center, l.y_center, l.width, l.height
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         ORDER BY i.id
@@ -96,14 +127,19 @@ def get_images():
     
     images = []
     for row in cursor.fetchall():
+        sub_labels = json.loads(row[4]) if row[4] else []
         images.append({
             'id': row[0],
             'filename': row[1],
             'filepath': row[2],
             'main_label': row[3],
-            'sub_labels': row[4],
+            'sub_labels': sub_labels,
             'dataset_split': row[5],
-            'is_reviewed': row[6]
+            'is_reviewed': row[6],
+            'x_center': row[7],
+            'y_center': row[8],
+            'width': row[9],
+            'height': row[10]
         })
     
     conn.close()
@@ -116,7 +152,8 @@ def get_image(image_id):
     
     cursor.execute('''
         SELECT i.id, i.filename, i.filepath, 
-               l.main_label, l.sub_labels, l.dataset_split, l.is_reviewed
+               l.main_label, l.sub_labels, l.dataset_split, l.is_reviewed,
+               l.x_center, l.y_center, l.width, l.height
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         WHERE i.id = ?
@@ -124,14 +161,19 @@ def get_image(image_id):
     
     row = cursor.fetchone()
     if row:
+        sub_labels = json.loads(row[4]) if row[4] else []
         image_data = {
             'id': row[0],
             'filename': row[1],
             'filepath': row[2],
             'main_label': row[3],
-            'sub_labels': row[4],
+            'sub_labels': sub_labels,
             'dataset_split': row[5],
-            'is_reviewed': row[6]
+            'is_reviewed': row[6],
+            'x_center': row[7],
+            'y_center': row[8],
+            'width': row[9],
+            'height': row[10]
         }
         conn.close()
         return jsonify(image_data)
@@ -146,16 +188,23 @@ def save_label():
     main_label = data.get('main_label')
     sub_labels = json.dumps(data.get('sub_labels', []))
     dataset_split = data.get('dataset_split')
-    is_reviewed = data.get('is_reviewed', 1)  # Default to 1 (reviewed) when saving
+    is_reviewed = data.get('is_reviewed', 1)
+    
+    x_center = data.get('x_center')
+    y_center = data.get('y_center') 
+    width = data.get('width')
+    height = data.get('height')
     
     conn = sqlite3.connect('labels.db')
     cursor = conn.cursor()
     
     cursor.execute('''
         INSERT OR REPLACE INTO labels 
-        (image_path, main_label, sub_labels, dataset_split, is_reviewed, updated_at)
-        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    ''', (image_path, main_label, sub_labels, dataset_split, is_reviewed))
+        (image_path, main_label, sub_labels, dataset_split, is_reviewed, 
+         x_center, y_center, width, height, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ''', (image_path, main_label, sub_labels, dataset_split, is_reviewed,
+          x_center, y_center, width, height))
     
     conn.commit()
     conn.close()
@@ -168,7 +217,8 @@ def export_data(format):
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT i.filename, i.filepath, l.main_label, l.sub_labels, l.dataset_split
+        SELECT i.filename, i.filepath, l.main_label, l.sub_labels, l.dataset_split,
+               l.x_center, l.y_center, l.width, l.height
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         WHERE l.is_reviewed = 1
@@ -182,7 +232,11 @@ def export_data(format):
             'filepath': row[1],
             'main_label': row[2],
             'sub_labels': sub_labels,
-            'dataset_split': row[4]
+            'dataset_split': row[4],
+            'x_center': row[5],
+            'y_center': row[6],
+            'width': row[7],
+            'height': row[8]
         })
     
     conn.close()
@@ -197,14 +251,18 @@ def export_data(format):
         filename = f'labels_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
         with open(filename, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(['filename', 'filepath', 'main_label', 'sub_labels', 'dataset_split'])
+            writer.writerow(['filename', 'filepath', 'main_label', 'sub_labels', 'dataset_split', 'x_center', 'y_center', 'width', 'height'])
             for item in data:
                 writer.writerow([
                     item['filename'],
                     item['filepath'],
                     item['main_label'],
                     ','.join(item['sub_labels']),
-                    item['dataset_split']
+                    item['dataset_split'],
+                    item['x_center'],
+                    item['y_center'],
+                    item['width'],
+                    item['height']
                 ])
         return send_file(filename, as_attachment=True)
     
@@ -212,8 +270,8 @@ def export_data(format):
         filename = f'yolo_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.txt'
         with open(filename, 'w', encoding='utf-8') as f:
             for item in data:
-                if item['main_label'] == 'nose':
-                    f.write(f"0 0.5 0.5 1.0 1.0  # {item['filename']}\n")
+                if item['main_label'] == 'nose' and all(coord is not None for coord in [item['x_center'], item['y_center'], item['width'], item['height']]):
+                    f.write(f"0 {item['x_center']} {item['y_center']} {item['width']} {item['height']}  # {item['filename']}\n")
         return send_file(filename, as_attachment=True)
     
     return jsonify({'error': '無効なフォーマットです'}), 400
@@ -225,7 +283,8 @@ def export_dataset():
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT i.filepath, l.main_label, l.dataset_split
+        SELECT i.filepath, l.main_label, l.dataset_split, 
+               l.x_center, l.y_center, l.width, l.height
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
         WHERE l.is_reviewed = 1 AND l.dataset_split IS NOT NULL
@@ -245,7 +304,7 @@ def export_dataset():
         os.makedirs(os.path.join(dataset_dir, 'labels', split), exist_ok=True)
     
     for row in rows:
-        filepath, main_label, dataset_split = row
+        filepath, main_label, dataset_split, x_center, y_center, width, height = row
         
         if not os.path.exists(filepath):
             continue
@@ -263,10 +322,9 @@ def export_dataset():
         label_output_dir = os.path.join(dataset_dir, 'labels', dataset_split)
         label_filename = f"{filename_no_ext}.txt"
         
-        class_id = 0 if main_label == 'nose' else -1
-        
         with open(os.path.join(label_output_dir, label_filename), 'w') as f:
-            f.write(str(class_id))
+            if main_label == 'nose' and all(coord is not None for coord in [x_center, y_center, width, height]):
+                f.write(f"0 {x_center} {y_center} {width} {height}\n")
     
     dataset_yaml_content = f"""# YOLO dataset configuration
 path: {os.path.abspath(dataset_dir)}
@@ -312,7 +370,8 @@ def filter_images():
     
     query = '''
         SELECT i.id, i.filename, i.filepath, 
-               l.main_label, l.sub_labels, l.dataset_split, l.is_reviewed
+               l.main_label, l.sub_labels, l.dataset_split, l.is_reviewed,
+               l.x_center, l.y_center, l.width, l.height
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         WHERE 1=1
@@ -354,7 +413,11 @@ def filter_images():
             'main_label': row[3],
             'sub_labels': parsed_sub_labels,
             'dataset_split': row[5],
-            'is_reviewed': row[6]
+            'is_reviewed': row[6],
+            'x_center': row[7],
+            'y_center': row[8],
+            'width': row[9],
+            'height': row[10]
         })
     
     conn.close()
@@ -451,6 +514,33 @@ def auto_split_dataset():
         conn.close()
     
     return jsonify(result)
+
+@app.route('/api/calculate-bbox', methods=['POST'])
+def calculate_bbox():
+    """Calculate bbox coordinates from original and cropped images"""
+    data = request.json
+    image_path = data.get('image_path')
+    
+    if not image_path:
+        return jsonify({'error': 'image_path required'}), 400
+    
+    filename = os.path.basename(image_path)
+    cropped_path = os.path.join('cropped_image', filename)
+    
+    if not os.path.exists(cropped_path):
+        return jsonify({'error': 'Cropped image not found'}), 404
+    
+    x_center, y_center, width, height = calculate_bbox_from_crop(image_path, cropped_path)
+    
+    if x_center is None:
+        return jsonify({'error': 'Failed to calculate bbox'}), 500
+    
+    return jsonify({
+        'x_center': x_center,
+        'y_center': y_center, 
+        'width': width,
+        'height': height
+    })
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):

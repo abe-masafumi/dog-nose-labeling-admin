@@ -76,6 +76,83 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
 
+        .bbox-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .bbox-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .bbox-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .bbox-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .bbox-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .bbox-button:hover {
+            background-color: #0056b3;
+        }
+
+        .bbox-button.secondary {
+            background-color: #6c757d;
+        }
+
+        .bbox-button.secondary:hover {
+            background-color: #545b62;
+        }
+
+        .bbox-controls {
+            margin-bottom: 15px;
+        }
+
+        .bbox-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .bbox-button:hover {
+            background: #218838;
+        }
+
+        .bbox-button.secondary {
+            background: #6c757d;
+        }
+
+        .bbox-button.secondary:hover {
+            background: #5a6268;
+        }
+
         .image-info {
             background: #f8f9fa;
             padding: 15px;
@@ -631,7 +708,15 @@
                 </div>
 
                 <div class="image-container" id="imageContainer">
-                    <div class="loading">画像を読み込み中...</div>
+                    <div class="bbox-container">
+                        <div class="loading">画像を読み込み中...</div>
+                        <canvas id="bboxCanvas" class="bbox-canvas" style="display: none;"></canvas>
+                    </div>
+                    <div id="bboxInfo" class="bbox-info" style="display: none;">
+                        <strong>バウンディングボックス情報:</strong><br>
+                        X中心: <span id="bboxX">-</span>, Y中心: <span id="bboxY">-</span><br>
+                        幅: <span id="bboxW">-</span>, 高さ: <span id="bboxH">-</span>
+                    </div>
                 </div>
 
                 <div class="image-info" id="imageInfo" style="display: none;">
@@ -658,6 +743,15 @@
                         <button class="label-button nose" onclick="setMainLabel('nose')">
                             🐽 鼻あり (1)
                         </button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>📦 バウンディングボックス</h3>
+                    <div class="bbox-controls">
+                        <button class="bbox-button" onclick="startDrawing()">手動描画</button>
+                        <button class="bbox-button secondary" onclick="autoCalculateBbox()">自動算出</button>
+                        <button class="bbox-button secondary" onclick="clearBbox()">クリア</button>
                     </div>
                 </div>
 
@@ -759,10 +853,6 @@
                         <span class="shortcut-key">1</span>
                     </div>
                     <div class="shortcut-item">
-                        <span>鼻なし:</span>
-                        <span class="shortcut-key">2</span>
-                    </div>
-                    <div class="shortcut-item">
                         <span>正面:</span>
                         <span class="shortcut-key">F</span>
                     </div>
@@ -826,6 +916,9 @@
             mainLabels: [],
             subLabels: []
         };
+        let isDrawing = false;
+        let startX, startY;
+        let currentBbox = null;
 
         // 初期化
         async function init() {
@@ -876,15 +969,35 @@
             const image = filteredImages[index];
             
             // 画像表示
-            document.getElementById('imageContainer').innerHTML = 
-                `<img src="/images/${image.filename}" alt="${image.filename}" class="image-display">`;
+            const imageContainer = document.getElementById('imageContainer');
+            imageContainer.innerHTML = `
+                <div class="bbox-container">
+                    <img src="/images/${image.filename}" alt="${image.filename}" class="image-display" onload="setupCanvas()">
+                    <canvas id="bboxCanvas" class="bbox-canvas" style="display: none;"></canvas>
+                </div>
+                <div id="bboxInfo" class="bbox-info" style="display: none;">
+                    <strong>バウンディングボックス情報:</strong><br>
+                    X中心: <span id="bboxX">-</span>, Y中心: <span id="bboxY">-</span><br>
+                    幅: <span id="bboxW">-</span>, 高さ: <span id="bboxH">-</span>
+                </div>
+            `;
+            
+            // Setup bbox if exists
+            const imgElement = imageContainer.querySelector('img');
+            imgElement.onload = function() {
+                setupCanvas();
+                if (image.x_center && image.y_center && image.width && image.height) {
+                    drawBbox(image.x_center, image.y_center, image.width, image.height);
+                    updateBboxInfo(image.x_center, image.y_center, image.width, image.height);
+                }
+            };
             
             // 画像情報表示
             document.getElementById('imageInfo').style.display = 'block';
             document.getElementById('fileName').textContent = image.filename;
             document.getElementById('filePath').textContent = image.filepath;
             document.getElementById('currentLabel').textContent = 
-                image.main_label || '未設定';
+                currentMainLabel || '未設定';
             
             // インデックス更新 (1-based for user display)
             document.getElementById('currentIndex').textContent = index + 1;
@@ -1004,7 +1117,11 @@
                 image_path: image.filepath,
                 main_label: currentMainLabel,
                 sub_labels: currentSubLabels,
-                dataset_split: currentDatasetSplit
+                dataset_split: currentDatasetSplit,
+                x_center: currentBbox ? currentBbox.x_center : null,
+                y_center: currentBbox ? currentBbox.y_center : null,
+                width: currentBbox ? currentBbox.width : null,
+                height: currentBbox ? currentBbox.height : null
             };
             
             try {
@@ -1021,6 +1138,12 @@
                     filteredImages[currentImageIndex].main_label = currentMainLabel;
                     filteredImages[currentImageIndex].sub_labels = JSON.stringify(currentSubLabels);
                     filteredImages[currentImageIndex].dataset_split = currentDatasetSplit;
+                    if (currentBbox) {
+                        filteredImages[currentImageIndex].x_center = currentBbox.x_center;
+                        filteredImages[currentImageIndex].y_center = currentBbox.y_center;
+                        filteredImages[currentImageIndex].width = currentBbox.width;
+                        filteredImages[currentImageIndex].height = currentBbox.height;
+                    }
                     
                     // Also update in allImages array
                     const allImageIndex = allImages.findIndex(img => img.id === image.id);
@@ -1028,6 +1151,12 @@
                         allImages[allImageIndex].main_label = currentMainLabel;
                         allImages[allImageIndex].sub_labels = JSON.stringify(currentSubLabels);
                         allImages[allImageIndex].dataset_split = currentDatasetSplit;
+                        if (currentBbox) {
+                            allImages[allImageIndex].x_center = currentBbox.x_center;
+                            allImages[allImageIndex].y_center = currentBbox.y_center;
+                            allImages[allImageIndex].width = currentBbox.width;
+                            allImages[allImageIndex].height = currentBbox.height;
+                        }
                     }
                     
                     // 現在のラベル表示を更新
@@ -1459,6 +1588,146 @@
             // Update URL without page reload
             const newURL = `${window.location.pathname}?${params.toString()}`;
             window.history.replaceState({}, '', newURL);
+        }
+
+        function setupCanvas() {
+            const img = document.querySelector('.image-display');
+            const canvas = document.getElementById('bboxCanvas');
+            if (!img || !canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.offsetWidth;
+            canvas.height = img.offsetHeight;
+            canvas.style.display = 'block';
+            
+            canvas.onmousedown = function(e) {
+                if (!isDrawing) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                startX = e.clientX - rect.left;
+                startY = e.clientY - rect.top;
+            };
+            
+            canvas.onmousemove = function(e) {
+                if (!isDrawing) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (startX && startY) {
+                    const width = currentX - startX;
+                    const height = currentY - startY;
+                    
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(startX, startY, width, height);
+                }
+            };
+            
+            canvas.onmouseup = function(e) {
+                if (!isDrawing) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const endX = e.clientX - rect.left;
+                const endY = e.clientY - rect.top;
+                
+                if (startX && startY) {
+                    const bboxWidth = Math.abs(endX - startX);
+                    const bboxHeight = Math.abs(endY - startY);
+                    const bboxX = Math.min(startX, endX);
+                    const bboxY = Math.min(startY, endY);
+                    
+                    const x_center = (bboxX + bboxWidth / 2) / canvas.width;
+                    const y_center = (bboxY + bboxHeight / 2) / canvas.height;
+                    const width = bboxWidth / canvas.width;
+                    const height = bboxHeight / canvas.height;
+                    
+                    currentBbox = { x_center, y_center, width, height };
+                    updateBboxInfo(x_center, y_center, width, height);
+                }
+                
+                isDrawing = false;
+                canvas.style.cursor = 'default';
+            };
+        }
+
+        function startBboxDrawing() {
+            isDrawing = true;
+            const canvas = document.getElementById('bboxCanvas');
+            canvas.style.cursor = 'crosshair';
+            showNotification('マウスでバウンディングボックスを描画してください', 'info');
+        }
+
+        function drawBbox(x_center, y_center, width, height) {
+            const canvas = document.getElementById('bboxCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const bboxX = (x_center - width / 2) * canvas.width;
+            const bboxY = (y_center - height / 2) * canvas.height;
+            const bboxWidth = width * canvas.width;
+            const bboxHeight = height * canvas.height;
+            
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(bboxX, bboxY, bboxWidth, bboxHeight);
+            
+            currentBbox = { x_center, y_center, width, height };
+        }
+
+        function updateBboxInfo(x_center, y_center, width, height) {
+            document.getElementById('bboxX').textContent = x_center.toFixed(3);
+            document.getElementById('bboxY').textContent = y_center.toFixed(3);
+            document.getElementById('bboxW').textContent = width.toFixed(3);
+            document.getElementById('bboxH').textContent = height.toFixed(3);
+            document.getElementById('bboxInfo').style.display = 'block';
+        }
+
+        function autoCalculateBbox() {
+            const currentImage = filteredImages[currentImageIndex];
+            if (!currentImage) return;
+            
+            fetch('/api/calculate-bbox', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image_path: currentImage.filepath
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showNotification(data.error, 'error');
+                } else {
+                    drawBbox(data.x_center, data.y_center, data.width, data.height);
+                    updateBboxInfo(data.x_center, data.y_center, data.width, data.height);
+                    showNotification('バウンディングボックスを自動算出しました', 'success');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('自動算出エラーが発生しました', 'error');
+            });
+        }
+
+        function clearBbox() {
+            const canvas = document.getElementById('bboxCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            currentBbox = null;
+            document.getElementById('bboxInfo').style.display = 'none';
+            showNotification('バウンディングボックスをクリアしました', 'info');
         }
 
         // 初期化実行
