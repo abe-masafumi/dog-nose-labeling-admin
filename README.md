@@ -130,7 +130,7 @@ dataset/
 | dataset_split  | TEXT      | データセット分割           |
 | created_at     | TIMESTAMP | 作成日時                   |
 | updated_at     | TIMESTAMP | 更新日時                   |
-| is_reviewed    | INTEGER   | レビュー済みフラグ         |
+| is_completed   | INTEGER   | 作業済みフラグ             |
 | bbox           | TEXT      | バウンディングボックス（JSON形式） |
 
 ### imagesテーブル

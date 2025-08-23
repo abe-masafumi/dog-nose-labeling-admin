@@ -78,7 +78,7 @@ def get_images():
     
     cursor.execute('''
         SELECT i.id, i.filename, i.filepath, 
-               l.main_label, l.sub_labels, l.dataset_split, l.bbox
+               l.main_label, l.sub_labels, l.dataset_split, l.bbox, l.is_completed
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         ORDER BY i.id
@@ -92,7 +92,8 @@ def get_images():
             'main_label': row[3],
             'sub_labels': row[4],
             'dataset_split': row[5],
-            'bbox': row[6]
+            'bbox': row[6],
+            'is_completed': row[7]
         })
     conn.close()
     return jsonify(images)
@@ -137,10 +138,18 @@ def save_label():
         bbox = json.dumps(bbox)
     conn = sqlite3.connect('labels.db')
     cursor = conn.cursor()
+    # is_completed=1を必ずセット
+    # 既存レコードがあればUPDATE、なければINSERT
     cursor.execute('''
-        INSERT OR REPLACE INTO labels 
-        (image_path, main_label, sub_labels, dataset_split, bbox, updated_at)
-        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        INSERT INTO labels (image_path, main_label, sub_labels, dataset_split, bbox, is_completed, updated_at)
+        VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT(image_path) DO UPDATE SET
+            main_label=excluded.main_label,
+            sub_labels=excluded.sub_labels,
+            dataset_split=excluded.dataset_split,
+            bbox=excluded.bbox,
+            is_completed=1,
+            updated_at=CURRENT_TIMESTAMP
     ''', (image_path, main_label, sub_labels, dataset_split, bbox))
     conn.commit()
     conn.close()
@@ -152,12 +161,12 @@ def export_data(format):
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT i.filename, i.filepath, l.main_label, l.sub_labels, l.dataset_split, l.bbox, l.is_reviewed
+        SELECT i.filename, i.filepath, l.main_label, l.sub_labels, l.dataset_split, l.bbox, l.is_completed
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         WHERE (
             (l.main_label = 'nose' AND l.bbox IS NOT NULL AND l.bbox != '')
-            OR (l.main_label != 'nose' AND l.is_reviewed = 1)
+            OR (l.main_label != 'nose' AND l.is_completed = 1)
             OR (l.main_label IS NULL OR l.main_label = '')
         )
     ''')
@@ -172,7 +181,7 @@ def export_data(format):
             'sub_labels': sub_labels,
             'dataset_split': row[4],
             'bbox': row[5],
-            'is_reviewed': row[6]
+            'is_completed': row[6]
         })
     
     conn.close()
@@ -215,12 +224,12 @@ def export_dataset():
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT i.filepath, l.main_label, l.dataset_split, l.bbox, l.is_reviewed
+        SELECT i.filepath, l.main_label, l.dataset_split, l.bbox, l.is_completed
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
         WHERE (
             (l.main_label = 'nose' AND l.bbox IS NOT NULL AND l.bbox != '')
-            OR (l.main_label != 'nose' AND l.is_reviewed = 1)
+            OR (l.main_label != 'nose' AND l.is_completed = 1)
             OR (l.main_label IS NULL OR l.main_label = '')
         )
         AND l.dataset_split IS NOT NULL
@@ -239,7 +248,7 @@ def export_dataset():
         return jsonify({'error': 'エクスポートするデータがありません'}), 400
 
     for row in rows:
-        filepath, main_label, dataset_split, bbox, is_reviewed = row
+        filepath, main_label, dataset_split, bbox, is_completed = row
         if not os.path.exists(filepath) or not dataset_split:
             continue
         # 画像コピー

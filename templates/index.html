@@ -513,6 +513,10 @@
                         <span>BBox:</span>
                         <span id="bboxInfo">-</span>
                     </div>
+                    <div class="info-item">
+                        <span>作業済み:</span>
+                        <span id="isCompletedInfo">-</span>
+                    </div>
                 </div>
             </div>
 
@@ -1031,6 +1035,9 @@
             } else {
                 document.getElementById('bboxInfo').textContent = '-';
             }
+            // is_completed情報表示
+            let isCompleted = (image.is_completed === 1 || image.is_completed === true || image.is_completed === '1') ? '✔️' : '✗';
+            document.getElementById('isCompletedInfo').textContent = isCompleted;
             
             // インデックス更新
             document.getElementById('currentIndex').textContent = index + 1;
@@ -1140,10 +1147,6 @@
 
         // ラベル保存
         async function saveLabel() {
-            if (!currentMainLabel) {
-                alert('メインラベルを選択してください');
-                return;
-            }
             
             const image = images[currentImageIndex];
             let bbox = window.currentBbox || null;
@@ -1169,10 +1172,10 @@
                     images[currentImageIndex].main_label = currentMainLabel;
                     images[currentImageIndex].sub_labels = JSON.stringify(currentSubLabels);
                     images[currentImageIndex].dataset_split = currentDatasetSplit;
-                    
+                    images[currentImageIndex].is_completed = 1;
                     // 現在のラベル表示を更新
                     document.getElementById('currentLabel').textContent = currentMainLabel;
-                    
+                    document.getElementById('isCompletedInfo').textContent = '✔️';
                     // 次の画像に移動
                     if (currentImageIndex < images.length - 1) {
                         nextImage();
