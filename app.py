@@ -279,7 +279,7 @@ def export_dataset():
 @app.route('/api/filter')
 def filter_images():
     """フィルター条件に基づいて画像を検索"""
-    main_label = request.args.get('main_label')
+    main_labels = request.args.getlist('main_label')
     sub_labels = request.args.getlist('sub_labels')
     dataset_split = request.args.get('dataset_split')
     
@@ -295,9 +295,17 @@ def filter_images():
     '''
     params = []
     
-    if main_label:
-        query += ' AND l.main_label = ?'
-        params.append(main_label)
+    if main_labels:
+        main_label_conditions = []
+        for main_label in main_labels:
+            if main_label == '':
+                main_label_conditions.append('l.main_label IS NULL')
+            else:
+                main_label_conditions.append('l.main_label = ?')
+                params.append(main_label)
+        
+        if main_label_conditions:
+            query += ' AND (' + ' OR '.join(main_label_conditions) + ')'
     
     if dataset_split:
         query += ' AND l.dataset_split = ?'

@@ -457,6 +457,109 @@
             margin-top: 5px;
         }
         
+        .filter-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .filter-header {
+            padding: 15px;
+            background: #e9ecef;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .filter-header:hover {
+            background: #dee2e6;
+        }
+        
+        .filter-toggle {
+            transition: transform 0.3s;
+        }
+        
+        .filter-toggle.expanded {
+            transform: rotate(180deg);
+        }
+        
+        .filter-content {
+            padding: 20px;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group h4 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+        
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .filter-options label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+        
+        .filter-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .filter-apply-btn, .filter-clear-btn, .page-jump-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .filter-apply-btn {
+            background: #007bff;
+            color: white;
+        }
+        
+        .filter-clear-btn {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .page-jump-btn {
+            background: #28a745;
+            color: white;
+        }
+        
+        .page-jump {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+        
+        .page-jump input {
+            width: 80px;
+            padding: 6px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -473,6 +576,48 @@
         <div class="header">
             <h1>🐕 犬の鼻ラベリング管理ツール</h1>
             <p>犬の顔画像から鼻の有無を判定し、機械学習用データセットを作成します</p>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-header" onclick="toggleFilters()">
+                <h3>🔍 フィルター・ページ指定</h3>
+                <span class="filter-toggle">▼</span>
+            </div>
+            <div class="filter-content" id="filterContent" style="display: none;">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <h4>メインラベル</h4>
+                        <div class="filter-options">
+                            <label><input type="checkbox" value="nose" onchange="updateFilters()"> 鼻あり</label>
+                            <label><input type="checkbox" value="null" onchange="updateFilters()"> ラベルなし</label>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <h4>サブラベル</h4>
+                        <div class="filter-options">
+                            <label><input type="checkbox" value="front" onchange="updateFilters()"> 正面</label>
+                            <label><input type="checkbox" value="side" onchange="updateFilters()"> 横向き</label>
+                            <label><input type="checkbox" value="tilted" onchange="updateFilters()"> 斜め</label>
+                            <label><input type="checkbox" value="clear" onchange="updateFilters()"> 鮮明</label>
+                            <label><input type="checkbox" value="blurred" onchange="updateFilters()"> ぼやけ</label>
+                            <label><input type="checkbox" value="black" onchange="updateFilters()"> 黒</label>
+                            <label><input type="checkbox" value="brown" onchange="updateFilters()"> 茶</label>
+                            <label><input type="checkbox" value="gray" onchange="updateFilters()"> 灰色</label>
+                            <label><input type="checkbox" value="pink" onchange="updateFilters()"> ピンク</label>
+                            <label><input type="checkbox" value="marble" onchange="updateFilters()"> マーブル</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button onclick="applyFilters()" class="filter-apply-btn">フィルター適用</button>
+                    <button onclick="clearFilters()" class="filter-clear-btn">クリア</button>
+                    <div class="page-jump">
+                        <label for="pageInput">ページ番号:</label>
+                        <input type="number" id="pageInput" min="1" placeholder="例: 900">
+                        <button onclick="jumpToPage()" class="page-jump-btn">移動</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="main-content">
@@ -671,43 +816,51 @@
     </div>
 
     <script>
-        let images = [];
+        let allImages = [];           // All images from database
+        let filteredImages = [];      // Currently filtered/displayed images
         let currentImageIndex = 0;
         let currentMainLabel = null;
         let currentSubLabels = [];
         let currentDatasetSplit = null;
+        let activeFilters = {
+            mainLabels: [],
+            subLabels: []
+        };
 
         // 初期化
         async function init() {
             try {
                 const response = await fetch('/api/images');
-                images = await response.json();
+                allImages = await response.json();
                 
-                if (images.length === 0) {
+                if (allImages.length === 0) {
                     document.getElementById('imageContainer').innerHTML = 
                         '<div class="no-images">imagesフォルダに画像ファイルを配置してください</div>';
                     return;
                 }
                 
-                document.getElementById('totalImages').textContent = images.length;
-                
-                // URLパラメータから画像IDを取得
+                // Parse URL parameters for filters and page
                 const urlParams = new URLSearchParams(window.location.search);
-                const imageId = urlParams.get('imageId');
+                const page = parseInt(urlParams.get('page')) || 1;
+                const mainLabels = urlParams.getAll('main_label');
+                const subLabels = urlParams.getAll('sub_label');
                 
-                if (imageId) {
-                    // 指定された画像IDに対応するインデックスを検索
-                    const targetIndex = images.findIndex(img => img.id == imageId);
-                    if (targetIndex !== -1) {
-                        loadImage(targetIndex);
-                        // URLパラメータをクリア（履歴を汚さないため）
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    } else {
-                        loadImage(0);
-                    }
+                // Apply filters from URL
+                if (mainLabels.length > 0 || subLabels.length > 0) {
+                    activeFilters.mainLabels = mainLabels;
+                    activeFilters.subLabels = subLabels;
+                    await applyFiltersFromState();
+                    updateFilterUI();
                 } else {
-                    loadImage(0);
+                    filteredImages = [...allImages];
                 }
+                
+                document.getElementById('totalImages').textContent = filteredImages.length;
+                
+                // Load specific page or first image
+                const targetIndex = Math.max(0, Math.min(page - 1, filteredImages.length - 1));
+                loadImage(targetIndex);
+                
             } catch (error) {
                 console.error('画像の読み込みに失敗しました:', error);
                 document.getElementById('imageContainer').innerHTML = 
@@ -717,10 +870,10 @@
 
         // 画像を読み込み
         function loadImage(index) {
-            if (index < 0 || index >= images.length) return;
+            if (index < 0 || index >= filteredImages.length) return;
             
             currentImageIndex = index;
-            const image = images[index];
+            const image = filteredImages[index];
             
             // 画像表示
             document.getElementById('imageContainer').innerHTML = 
@@ -733,12 +886,17 @@
             document.getElementById('currentLabel').textContent = 
                 image.main_label || '未設定';
             
-            // インデックス更新
+            // インデックス更新 (1-based for user display)
             document.getElementById('currentIndex').textContent = index + 1;
+            document.getElementById('totalImages').textContent = filteredImages.length;
             
             // ナビゲーションボタンの状態更新
             document.getElementById('prevBtn').disabled = index === 0;
-            document.getElementById('nextBtn').disabled = index === images.length - 1;
+            document.getElementById('nextBtn').disabled = index === filteredImages.length - 1;
+            
+            // Update page input
+            document.getElementById('pageInput').value = index + 1;
+            document.getElementById('pageInput').max = filteredImages.length;
             
             // 現在のラベル状態を復元
             currentMainLabel = image.main_label;
@@ -841,12 +999,7 @@
 
         // ラベル保存
         async function saveLabel() {
-            if (!currentMainLabel) {
-                alert('メインラベルを選択してください');
-                return;
-            }
-            
-            const image = images[currentImageIndex];
+            const image = filteredImages[currentImageIndex];
             const data = {
                 image_path: image.filepath,
                 main_label: currentMainLabel,
@@ -864,16 +1017,24 @@
                 });
                 
                 if (response.ok) {
-                    // 画像データを更新
-                    images[currentImageIndex].main_label = currentMainLabel;
-                    images[currentImageIndex].sub_labels = JSON.stringify(currentSubLabels);
-                    images[currentImageIndex].dataset_split = currentDatasetSplit;
+                    // Update both filtered and all images arrays
+                    filteredImages[currentImageIndex].main_label = currentMainLabel;
+                    filteredImages[currentImageIndex].sub_labels = JSON.stringify(currentSubLabels);
+                    filteredImages[currentImageIndex].dataset_split = currentDatasetSplit;
+                    
+                    // Also update in allImages array
+                    const allImageIndex = allImages.findIndex(img => img.id === image.id);
+                    if (allImageIndex !== -1) {
+                        allImages[allImageIndex].main_label = currentMainLabel;
+                        allImages[allImageIndex].sub_labels = JSON.stringify(currentSubLabels);
+                        allImages[allImageIndex].dataset_split = currentDatasetSplit;
+                    }
                     
                     // 現在のラベル表示を更新
                     document.getElementById('currentLabel').textContent = currentMainLabel;
                     
                     // 次の画像に移動
-                    if (currentImageIndex < images.length - 1) {
+                    if (currentImageIndex < filteredImages.length - 1) {
                         nextImage();
                     }
                 } else {
@@ -889,13 +1050,15 @@
         function previousImage() {
             if (currentImageIndex > 0) {
                 loadImage(currentImageIndex - 1);
+                updateURL();
             }
         }
 
         // 次の画像
         function nextImage() {
-            if (currentImageIndex < images.length - 1) {
+            if (currentImageIndex < filteredImages.length - 1) {
                 loadImage(currentImageIndex + 1);
+                updateURL();
             }
         }
 
@@ -1158,6 +1321,144 @@
             
             resultDiv.style.display = 'block';
             document.getElementById('splitPreview').style.display = 'none';
+        }
+
+        function toggleFilters() {
+            const content = document.getElementById('filterContent');
+            const toggle = document.querySelector('.filter-toggle');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.classList.add('expanded');
+            } else {
+                content.style.display = 'none';
+                toggle.classList.remove('expanded');
+            }
+        }
+        
+        function updateFilters() {
+            // This function is called when checkboxes change
+            // We'll apply filters when the user clicks "フィルター適用"
+        }
+        
+        async function applyFilters() {
+            // Collect selected filters
+            const mainLabelCheckboxes = document.querySelectorAll('.filter-options input[value="nose"], .filter-options input[value="null"]');
+            const subLabelCheckboxes = document.querySelectorAll('.filter-options input[value="front"], .filter-options input[value="side"], .filter-options input[value="tilted"], .filter-options input[value="clear"], .filter-options input[value="blurred"], .filter-options input[value="black"], .filter-options input[value="brown"], .filter-options input[value="gray"], .filter-options input[value="pink"], .filter-options input[value="marble"]');
+            
+            activeFilters.mainLabels = Array.from(mainLabelCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value === 'null' ? null : cb.value);
+            
+            activeFilters.subLabels = Array.from(subLabelCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            await applyFiltersFromState();
+            updateURL();
+            
+            // Reset to first image of filtered results
+            if (filteredImages.length > 0) {
+                loadImage(0);
+            } else {
+                document.getElementById('imageContainer').innerHTML = 
+                    '<div class="no-images">フィルター条件に一致する画像がありません</div>';
+            }
+        }
+        
+        async function applyFiltersFromState() {
+            if (activeFilters.mainLabels.length === 0 && activeFilters.subLabels.length === 0) {
+                filteredImages = [...allImages];
+                return;
+            }
+            
+            // Use server-side filtering for better performance
+            const params = new URLSearchParams();
+            
+            activeFilters.mainLabels.forEach(label => {
+                if (label === null) {
+                    // Handle null case - images without main labels
+                    params.append('main_label', '');
+                } else {
+                    params.append('main_label', label);
+                }
+            });
+            
+            activeFilters.subLabels.forEach(label => {
+                params.append('sub_labels', label);
+            });
+            
+            try {
+                const response = await fetch(`/api/filter?${params.toString()}`);
+                filteredImages = await response.json();
+            } catch (error) {
+                console.error('フィルターエラー:', error);
+                filteredImages = [...allImages];
+            }
+        }
+        
+        function clearFilters() {
+            // Clear all checkboxes
+            document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            
+            activeFilters.mainLabels = [];
+            activeFilters.subLabels = [];
+            filteredImages = [...allImages];
+            
+            updateURL();
+            
+            if (filteredImages.length > 0) {
+                loadImage(0);
+            }
+        }
+        
+        function updateFilterUI() {
+            // Update checkboxes based on activeFilters
+            activeFilters.mainLabels.forEach(label => {
+                const value = label === null ? 'null' : label;
+                const checkbox = document.querySelector(`.filter-options input[value="${value}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+            
+            activeFilters.subLabels.forEach(label => {
+                const checkbox = document.querySelector(`.filter-options input[value="${label}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+        }
+        
+        function jumpToPage() {
+            const pageInput = document.getElementById('pageInput');
+            const pageNumber = parseInt(pageInput.value);
+            
+            if (isNaN(pageNumber) || pageNumber < 1 || pageNumber > filteredImages.length) {
+                alert(`ページ番号は1から${filteredImages.length}の間で入力してください`);
+                return;
+            }
+            
+            loadImage(pageNumber - 1);
+            updateURL();
+        }
+        
+        function updateURL() {
+            const params = new URLSearchParams();
+            
+            // Add current page
+            params.set('page', currentImageIndex + 1);
+            
+            // Add active filters
+            activeFilters.mainLabels.forEach(label => {
+                params.append('main_label', label || '');
+            });
+            
+            activeFilters.subLabels.forEach(label => {
+                params.append('sub_label', label);
+            });
+            
+            // Update URL without page reload
+            const newURL = `${window.location.pathname}?${params.toString()}`;
+            window.history.replaceState({}, '', newURL);
         }
 
         // 初期化実行
