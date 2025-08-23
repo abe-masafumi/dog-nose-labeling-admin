@@ -173,14 +173,6 @@
             border-color: #28a745;
         }
 
-        .label-button.non_nose {
-            border-color: #dc3545;
-        }
-
-        .label-button.non_nose.active {
-            background: #dc3545;
-            border-color: #dc3545;
-        }
 
         .sub-labels {
             margin-bottom: 20px;
@@ -520,9 +512,6 @@
                     <div class="label-buttons">
                         <button class="label-button nose" onclick="setMainLabel('nose')">
                             🐽 鼻あり (1)
-                        </button>
-                        <button class="label-button non_nose" onclick="setMainLabel('non_nose')">
-                            ❌ 鼻なし (2)
                         </button>
                     </div>
                 </div>
@@ -930,9 +919,6 @@
             switch(event.key) {
                 case '1':
                     setMainLabel('nose');
-                    break;
-                case '2':
-                    setMainLabel('non_nose');
                     break;
                 case 'f':
                 case 'F':
