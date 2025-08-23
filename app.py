@@ -263,7 +263,7 @@ def export_dataset():
         label_output_dir = os.path.join(dataset_dir, 'labels', dataset_split)
         label_filename = f"{filename_no_ext}.txt"
         
-        class_id = 0 if main_label == 'nose' else 1
+        class_id = 0 if main_label == 'nose' else -1
         
         with open(os.path.join(label_output_dir, label_filename), 'w') as f:
             f.write(str(class_id))
@@ -274,8 +274,8 @@ train: images/train
 val: images/val
 test: images/test
 
-nc: 2
-names: ['nose', 'non_nose']
+nc: 1
+names: ['nose']
 """
     
     with open(os.path.join(dataset_dir, 'dataset.yaml'), 'w') as f:
