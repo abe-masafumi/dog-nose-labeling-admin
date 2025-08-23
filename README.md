@@ -121,15 +121,17 @@ dataset/
 ## 🗄️ データベース構造
 
 ### labelsテーブル
-| カラム | 型 | 説明 |
-|--------|----|----|
-| id | INTEGER | 主キー |
-| image_path | TEXT | 画像ファイルパス |
-| main_label | TEXT | メインラベル（nose または NULL） |
-| sub_labels | TEXT | サブラベル（JSON形式） |
-| dataset_split | TEXT | データセット分割（train/val/test） |
-| created_at | TIMESTAMP | 作成日時 |
-| updated_at | TIMESTAMP | 更新日時 |
+| カラム         | 型        | 説明 |
+|----------------|-----------|----------------------------|
+| id             | INTEGER   | 主キー                     |
+| image_path     | TEXT      | 画像ファイルパス（ユニーク）|
+| main_label     | TEXT      | メインラベル               |
+| sub_labels     | TEXT      | サブラベル（JSON形式）     |
+| dataset_split  | TEXT      | データセット分割           |
+| created_at     | TIMESTAMP | 作成日時                   |
+| updated_at     | TIMESTAMP | 更新日時                   |
+| is_reviewed    | INTEGER   | レビュー済みフラグ         |
+| bbox           | TEXT      | バウンディングボックス（JSON形式） |
 
 ### imagesテーブル
 | カラム | 型 | 説明 |
