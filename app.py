@@ -22,6 +22,7 @@ def init_db():
             main_label TEXT,
             sub_labels TEXT,
             dataset_split TEXT,
+            is_reviewed INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -35,6 +36,16 @@ def init_db():
             file_size INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+    ''')
+    
+    try:
+        cursor.execute('ALTER TABLE labels ADD COLUMN is_reviewed INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
+    
+    cursor.execute('''
+        UPDATE labels SET is_reviewed = 1 
+        WHERE main_label IS NOT NULL AND is_reviewed = 0
     ''')
     
     conn.commit()
@@ -77,7 +88,7 @@ def get_images():
     
     cursor.execute('''
         SELECT i.id, i.filename, i.filepath, 
-               l.main_label, l.sub_labels, l.dataset_split
+               l.main_label, l.sub_labels, l.dataset_split, l.is_reviewed
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         ORDER BY i.id
@@ -91,7 +102,8 @@ def get_images():
             'filepath': row[2],
             'main_label': row[3],
             'sub_labels': row[4],
-            'dataset_split': row[5]
+            'dataset_split': row[5],
+            'is_reviewed': row[6]
         })
     
     conn.close()
@@ -104,7 +116,7 @@ def get_image(image_id):
     
     cursor.execute('''
         SELECT i.id, i.filename, i.filepath, 
-               l.main_label, l.sub_labels, l.dataset_split
+               l.main_label, l.sub_labels, l.dataset_split, l.is_reviewed
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
         WHERE i.id = ?
@@ -118,7 +130,8 @@ def get_image(image_id):
             'filepath': row[2],
             'main_label': row[3],
             'sub_labels': row[4],
-            'dataset_split': row[5]
+            'dataset_split': row[5],
+            'is_reviewed': row[6]
         }
         conn.close()
         return jsonify(image_data)
@@ -139,8 +152,8 @@ def save_label():
     
     cursor.execute('''
         INSERT OR REPLACE INTO labels 
-        (image_path, main_label, sub_labels, dataset_split, updated_at)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        (image_path, main_label, sub_labels, dataset_split, is_reviewed, updated_at)
+        VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
     ''', (image_path, main_label, sub_labels, dataset_split))
     
     conn.commit()
@@ -157,7 +170,7 @@ def export_data(format):
         SELECT i.filename, i.filepath, l.main_label, l.sub_labels, l.dataset_split
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
-        WHERE l.main_label IS NOT NULL
+        WHERE l.is_reviewed = 1
     ''')
     
     data = []
@@ -214,7 +227,7 @@ def export_dataset():
         SELECT i.filepath, l.main_label, l.dataset_split
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
-        WHERE l.main_label IS NOT NULL AND l.dataset_split IS NOT NULL
+        WHERE l.is_reviewed = 1 AND l.dataset_split IS NOT NULL
     ''')
     
     dataset_dir = 'dataset'
@@ -232,7 +245,8 @@ def export_dataset():
         if not os.path.exists(filepath):
             continue
             
-        output_dir = os.path.join(dataset_dir, dataset_split, main_label)
+        label_folder = main_label if main_label else "non_nose"
+        output_dir = os.path.join(dataset_dir, dataset_split, label_folder)
         os.makedirs(output_dir, exist_ok=True)
         
         filename = os.path.basename(filepath)
@@ -257,7 +271,7 @@ def export_dataset():
         
         shutil.rmtree(dataset_dir)
         
-        return send_file(zip_filename, as_attachment=True, as_attachment_filename=zip_filename)
+        return send_file(zip_filename, as_attachment=True, download_name=zip_filename)
     except Exception as e:
         return jsonify({'error': f'ZIPファイル作成エラー: {str(e)}'}), 500
 
@@ -336,7 +350,7 @@ def auto_split_dataset():
         SELECT i.id, i.filepath, l.main_label, l.dataset_split
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
-        WHERE l.main_label IS NOT NULL
+        WHERE l.is_reviewed = 1
         ORDER BY i.id
     ''')
     
@@ -344,7 +358,7 @@ def auto_split_dataset():
     
     if not labeled_images:
         conn.close()
-        return jsonify({'error': 'メインラベルが設定された画像がありません'}), 400
+        return jsonify({'error': 'チェック済みの画像がありません'}), 400
     
     shuffled_images = list(labeled_images)
     random.shuffle(shuffled_images)
