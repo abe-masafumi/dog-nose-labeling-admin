@@ -314,211 +314,95 @@ def filter_images():
 
 @app.route('/api/auto-split', methods=['POST'])
 def auto_split_dataset():
-    """自動データセット分割（基本・高度モード対応）"""
+    """自動データセット分割（基本モード）"""
     data = request.json
-    advanced_mode = data.get('advanced_mode', False)
     preview_only = data.get('preview_only', False)
+    
+    train_percent = data.get('train_percent', 80)
+    val_percent = data.get('val_percent', 10) 
+    test_percent = data.get('test_percent', 10)
+    
+    total = train_percent + val_percent + test_percent
+    if abs(total - 100) > 0.01:
+        return jsonify({'error': f'割合の合計が100%になりません: {total}%'}), 400
+    
+    if train_percent < 0 or val_percent < 0 or test_percent < 0:
+        return jsonify({'error': '割合は0以上で入力してください'}), 400
     
     conn = sqlite3.connect('labels.db')
     cursor = conn.cursor()
     
-    if advanced_mode:
-        sublabel_splits = data.get('sublabel_splits', {})
-        
-        all_splits = {'train': [], 'val': [], 'test': []}
-        sublabel_stats = {}
-        
-        for nose_color, split_config in sublabel_splits.items():
-            cursor.execute('''
-                SELECT i.id, i.filepath, l.main_label, l.dataset_split, l.sub_labels
-                FROM images i
-                JOIN labels l ON i.filepath = l.image_path
-                WHERE l.main_label IS NOT NULL AND l.sub_labels LIKE ?
-                ORDER BY i.id
-            ''', (f'%"{nose_color}"%',))
-            
-            color_images = cursor.fetchall()
-            
-            if not color_images:
-                sublabel_stats[nose_color] = {
-                    'total': 0, 'train': 0, 'val': 0, 'test': 0
-                }
-                continue
-            
-            shuffled_images = list(color_images)
-            random.shuffle(shuffled_images)
-            
-            total_count = len(shuffled_images)
-            train_count = int(total_count * split_config['train_percent'] / 100)
-            val_count = int(total_count * split_config['val_percent'] / 100)
-            test_count = total_count - train_count - val_count
-            
-            train_images = shuffled_images[:train_count]
-            val_images = shuffled_images[train_count:train_count + val_count]
-            test_images = shuffled_images[train_count + val_count:]
-            
-            all_splits['train'].extend(train_images)
-            all_splits['val'].extend(val_images)
-            all_splits['test'].extend(test_images)
-            
-            sublabel_stats[nose_color] = {
-                'total': total_count,
-                'train': len(train_images),
-                'val': len(val_images),
-                'test': len(test_images),
-                'train_percent_actual': round(len(train_images) / total_count * 100, 1) if total_count > 0 else 0,
-                'val_percent_actual': round(len(val_images) / total_count * 100, 1) if total_count > 0 else 0,
-                'test_percent_actual': round(len(test_images) / total_count * 100, 1) if total_count > 0 else 0
-            }
-        
-        cursor.execute('''
-            SELECT i.id, i.filepath, l.main_label, l.dataset_split
-            FROM images i
-            JOIN labels l ON i.filepath = l.image_path
-            WHERE l.main_label IS NOT NULL 
-            AND (l.sub_labels IS NULL OR l.sub_labels NOT LIKE '%"black"%' 
-                 AND l.sub_labels NOT LIKE '%"brown"%' AND l.sub_labels NOT LIKE '%"gray"%'
-                 AND l.sub_labels NOT LIKE '%"pink"%' AND l.sub_labels NOT LIKE '%"marble"%')
-            ORDER BY i.id
-        ''')
-        
-        other_images = cursor.fetchall()
-        if other_images:
-            shuffled_other = list(other_images)
-            random.shuffle(shuffled_other)
-            
-            other_total = len(shuffled_other)
-            other_train_count = int(other_total * 0.8)
-            other_val_count = int(other_total * 0.1)
-            
-            all_splits['train'].extend(shuffled_other[:other_train_count])
-            all_splits['val'].extend(shuffled_other[other_train_count:other_train_count + other_val_count])
-            all_splits['test'].extend(shuffled_other[other_train_count + other_val_count:])
-            
-            sublabel_stats['other'] = {
-                'total': other_total,
-                'train': other_train_count,
-                'val': other_val_count,
-                'test': other_total - other_train_count - other_val_count
-            }
-        
-        result = {
-            'advanced_mode': True,
-            'total_images': sum(len(all_splits[split]) for split in all_splits),
-            'train_count': len(all_splits['train']),
-            'val_count': len(all_splits['val']),
-            'test_count': len(all_splits['test']),
-            'sublabel_stats': sublabel_stats
-        }
-        
-        if preview_only:
-            conn.close()
-            return jsonify(result)
-        
-        try:
-            for split_type, images in all_splits.items():
-                for image_data in images:
-                    cursor.execute('''
-                        UPDATE labels SET dataset_split = ?, updated_at = CURRENT_TIMESTAMP
-                        WHERE image_path = ?
-                    ''', (split_type, image_data[1]))
-            
-            conn.commit()
-            result['success'] = True
-            result['message'] = 'サブラベル別データセット分割が完了しました'
-            
-        except Exception as e:
-            conn.rollback()
-            result['error'] = f'データベース更新エラー: {str(e)}'
-            return jsonify(result), 500
-        finally:
-            conn.close()
-        
+    cursor.execute('''
+        SELECT i.id, i.filepath, l.main_label, l.dataset_split
+        FROM images i
+        JOIN labels l ON i.filepath = l.image_path
+        WHERE l.main_label IS NOT NULL
+        ORDER BY i.id
+    ''')
+    
+    labeled_images = cursor.fetchall()
+    
+    if not labeled_images:
+        conn.close()
+        return jsonify({'error': 'メインラベルが設定された画像がありません'}), 400
+    
+    shuffled_images = list(labeled_images)
+    random.shuffle(shuffled_images)
+    
+    total_count = len(shuffled_images)
+    train_count = int(total_count * train_percent / 100)
+    val_count = int(total_count * val_percent / 100)
+    test_count = total_count - train_count - val_count
+    
+    train_images = shuffled_images[:train_count]
+    val_images = shuffled_images[train_count:train_count + val_count]
+    test_images = shuffled_images[train_count + val_count:]
+    
+    result = {
+        'total_images': total_count,
+        'train_count': len(train_images),
+        'val_count': len(val_images), 
+        'test_count': len(test_images),
+        'train_percent_actual': round(len(train_images) / total_count * 100, 1),
+        'val_percent_actual': round(len(val_images) / total_count * 100, 1),
+        'test_percent_actual': round(len(test_images) / total_count * 100, 1)
+    }
+    
+    if preview_only:
+        conn.close()
         return jsonify(result)
     
-    else:
-        train_percent = data.get('train_percent', 80)
-        val_percent = data.get('val_percent', 10) 
-        test_percent = data.get('test_percent', 10)
+    try:
+        for image_id, filepath, main_label, current_split in train_images:
+            cursor.execute('''
+                UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP
+                WHERE image_path = ?
+            ''', (filepath,))
         
-        total = train_percent + val_percent + test_percent
-        if abs(total - 100) > 0.01:
-            return jsonify({'error': f'割合の合計が100%になりません: {total}%'}), 400
+        for image_id, filepath, main_label, current_split in val_images:
+            cursor.execute('''
+                UPDATE labels SET dataset_split = 'val', updated_at = CURRENT_TIMESTAMP
+                WHERE image_path = ?
+            ''', (filepath,))
         
-        if train_percent < 0 or val_percent < 0 or test_percent < 0:
-            return jsonify({'error': '割合は0以上で入力してください'}), 400
+        for image_id, filepath, main_label, current_split in test_images:
+            cursor.execute('''
+                UPDATE labels SET dataset_split = 'test', updated_at = CURRENT_TIMESTAMP
+                WHERE image_path = ?
+            ''', (filepath,))
         
-        cursor.execute('''
-            SELECT i.id, i.filepath, l.main_label, l.dataset_split
-            FROM images i
-            JOIN labels l ON i.filepath = l.image_path
-            WHERE l.main_label IS NOT NULL
-            ORDER BY i.id
-        ''')
+        conn.commit()
+        result['success'] = True
+        result['message'] = 'データセット分割が完了しました'
         
-        labeled_images = cursor.fetchall()
-        
-        if not labeled_images:
-            conn.close()
-            return jsonify({'error': 'メインラベルが設定された画像がありません'}), 400
-        
-        shuffled_images = list(labeled_images)
-        random.shuffle(shuffled_images)
-        
-        total_count = len(shuffled_images)
-        train_count = int(total_count * train_percent / 100)
-        val_count = int(total_count * val_percent / 100)
-        test_count = total_count - train_count - val_count
-        
-        train_images = shuffled_images[:train_count]
-        val_images = shuffled_images[train_count:train_count + val_count]
-        test_images = shuffled_images[train_count + val_count:]
-        
-        result = {
-            'total_images': total_count,
-            'train_count': len(train_images),
-            'val_count': len(val_images), 
-            'test_count': len(test_images),
-            'train_percent_actual': round(len(train_images) / total_count * 100, 1),
-            'val_percent_actual': round(len(val_images) / total_count * 100, 1),
-            'test_percent_actual': round(len(test_images) / total_count * 100, 1)
-        }
-        
-        if preview_only:
-            conn.close()
-            return jsonify(result)
-        
-        try:
-            for image_id, filepath, main_label, current_split in train_images:
-                cursor.execute('''
-                    UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP
-                    WHERE image_path = ?
-                ''', (filepath,))
-            
-            for image_id, filepath, main_label, current_split in val_images:
-                cursor.execute('''
-                    UPDATE labels SET dataset_split = 'val', updated_at = CURRENT_TIMESTAMP
-                    WHERE image_path = ?
-                ''', (filepath,))
-            
-            for image_id, filepath, main_label, current_split in test_images:
-                cursor.execute('''
-                    UPDATE labels SET dataset_split = 'test', updated_at = CURRENT_TIMESTAMP
-                    WHERE image_path = ?
-                ''', (filepath,))
-            
-            conn.commit()
-            result['success'] = True
-            result['message'] = 'データセット分割が完了しました'
-            
-        except Exception as e:
-            conn.rollback()
-            result['error'] = f'データベース更新エラー: {str(e)}'
-            return jsonify(result), 500
-        finally:
-            conn.close()
-        
-        return jsonify(result)
+    except Exception as e:
+        conn.rollback()
+        result['error'] = f'データベース更新エラー: {str(e)}'
+        return jsonify(result), 500
+    finally:
+        conn.close()
+    
+    return jsonify(result)
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):

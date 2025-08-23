@@ -457,88 +457,6 @@
             margin-top: 5px;
         }
         
-        .advanced-split-toggle {
-            margin: 15px 0;
-            padding: 10px;
-            background-color: #f0f8ff;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-        
-        .advanced-split-toggle label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        
-        .advanced-split-controls {
-            margin-top: 15px;
-            padding: 20px;
-            background-color: #f9f9f9;
-            border: 2px solid #2196F3;
-            border-radius: 8px;
-        }
-        
-        .sublabel-split-groups {
-            display: grid;
-            gap: 15px;
-        }
-        
-        .sublabel-split-group {
-            padding: 15px;
-            background-color: white;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-        
-        .sublabel-split-group h5 {
-            margin: 0 0 10px 0;
-            color: #333;
-            font-size: 14px;
-        }
-        
-        .sublabel-percentage-inputs {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .sublabel-percentage-inputs input {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        
-        .sublabel-preview-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .sublabel-stat-group {
-            background-color: #f5f5f5;
-            padding: 10px;
-            border-radius: 4px;
-            border-left: 4px solid #2196F3;
-        }
-        
-        .sublabel-stat-title {
-            font-weight: bold;
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 5px;
-        }
-        
-        .sublabel-stat-values {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-        }
-
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -667,57 +585,6 @@
                             <div class="input-group">
                                 <label for="testPercent">Test (%)</label>
                                 <input type="number" id="testPercent" value="10" min="0" max="100" step="0.1">
-                            </div>
-                        </div>
-                        <div class="advanced-split-toggle">
-                            <label>
-                                <input type="checkbox" id="advancedMode" onchange="toggleAdvancedMode()">
-                                高度な分割設定（サブラベル別）
-                            </label>
-                        </div>
-                        <div id="advancedSplitControls" class="advanced-split-controls" style="display: none;">
-                            <h4>鼻の色別分割設定</h4>
-                            <div class="sublabel-split-groups">
-                                <div class="sublabel-split-group">
-                                    <h5>黒 (Black)</h5>
-                                    <div class="sublabel-percentage-inputs">
-                                        <input type="number" id="blackTrain" value="80" min="0" max="100" step="0.1" placeholder="Train %">
-                                        <input type="number" id="blackVal" value="10" min="0" max="100" step="0.1" placeholder="Val %">
-                                        <input type="number" id="blackTest" value="10" min="0" max="100" step="0.1" placeholder="Test %">
-                                    </div>
-                                </div>
-                                <div class="sublabel-split-group">
-                                    <h5>茶色 (Brown)</h5>
-                                    <div class="sublabel-percentage-inputs">
-                                        <input type="number" id="brownTrain" value="80" min="0" max="100" step="0.1" placeholder="Train %">
-                                        <input type="number" id="brownVal" value="10" min="0" max="100" step="0.1" placeholder="Val %">
-                                        <input type="number" id="brownTest" value="10" min="0" max="100" step="0.1" placeholder="Test %">
-                                    </div>
-                                </div>
-                                <div class="sublabel-split-group">
-                                    <h5>灰色 (Gray)</h5>
-                                    <div class="sublabel-percentage-inputs">
-                                        <input type="number" id="grayTrain" value="80" min="0" max="100" step="0.1" placeholder="Train %">
-                                        <input type="number" id="grayVal" value="10" min="0" max="100" step="0.1" placeholder="Val %">
-                                        <input type="number" id="grayTest" value="10" min="0" max="100" step="0.1" placeholder="Test %">
-                                    </div>
-                                </div>
-                                <div class="sublabel-split-group">
-                                    <h5>ピンク (Pink)</h5>
-                                    <div class="sublabel-percentage-inputs">
-                                        <input type="number" id="pinkTrain" value="80" min="0" max="100" step="0.1" placeholder="Train %">
-                                        <input type="number" id="pinkVal" value="10" min="0" max="100" step="0.1" placeholder="Val %">
-                                        <input type="number" id="pinkTest" value="10" min="0" max="100" step="0.1" placeholder="Test %">
-                                    </div>
-                                </div>
-                                <div class="sublabel-split-group">
-                                    <h5>マーブル (Marble)</h5>
-                                    <div class="sublabel-percentage-inputs">
-                                        <input type="number" id="marbleTrain" value="80" min="0" max="100" step="0.1" placeholder="Train %">
-                                        <input type="number" id="marbleVal" value="10" min="0" max="100" step="0.1" placeholder="Val %">
-                                        <input type="number" id="marbleTest" value="10" min="0" max="100" step="0.1" placeholder="Test %">
-                                    </div>
-                                </div>
                             </div>
                         </div>
                         <div class="auto-split-buttons">
@@ -1122,75 +989,28 @@
         });
 
 
-        function toggleAdvancedMode() {
-            const checkbox = document.getElementById('advancedMode');
-            const controls = document.getElementById('advancedSplitControls');
-            controls.style.display = checkbox.checked ? 'block' : 'none';
-        }
-        
-        function collectSublabelSplitSettings() {
-            const noseColors = ['black', 'brown', 'gray', 'pink', 'marble'];
-            const settings = {};
-            
-            for (const color of noseColors) {
-                const train = parseFloat(document.getElementById(`${color}Train`).value) || 0;
-                const val = parseFloat(document.getElementById(`${color}Val`).value) || 0;
-                const test = parseFloat(document.getElementById(`${color}Test`).value) || 0;
-                
-                const total = train + val + test;
-                if (Math.abs(total - 100) > 0.01) {
-                    throw new Error(`${color}の割合の合計が100%になりません: ${total}%`);
-                }
-                
-                settings[color] = {
-                    train_percent: train,
-                    val_percent: val,
-                    test_percent: test
-                };
-            }
-            
-            return settings;
-        }
-
         async function previewAutoSplit() {
-            const advancedMode = document.getElementById('advancedMode').checked;
-            let requestData;
+            const trainPercent = parseFloat(document.getElementById('trainPercent').value);
+            const valPercent = parseFloat(document.getElementById('valPercent').value);
+            const testPercent = parseFloat(document.getElementById('testPercent').value);
             
-            try {
-                if (advancedMode) {
-                    const sublabelSettings = collectSublabelSplitSettings();
-                    requestData = {
-                        advanced_mode: true,
-                        sublabel_splits: sublabelSettings,
-                        preview_only: true
-                    };
-                } else {
-                    const trainPercent = parseFloat(document.getElementById('trainPercent').value);
-                    const valPercent = parseFloat(document.getElementById('valPercent').value);
-                    const testPercent = parseFloat(document.getElementById('testPercent').value);
-                    
-                    const total = trainPercent + valPercent + testPercent;
-                    if (Math.abs(total - 100) > 0.01) {
-                        alert(`割合の合計が100%になりません: ${total}%`);
-                        return;
-                    }
-                    
-                    if (trainPercent < 0 || valPercent < 0 || testPercent < 0) {
-                        alert('割合は0以上で入力してください');
-                        return;
-                    }
-                    
-                    requestData = {
-                        train_percent: trainPercent,
-                        val_percent: valPercent,
-                        test_percent: testPercent,
-                        preview_only: true
-                    };
-                }
-            } catch (error) {
-                alert(error.message);
+            const total = trainPercent + valPercent + testPercent;
+            if (Math.abs(total - 100) > 0.01) {
+                alert(`割合の合計が100%になりません: ${total}%`);
                 return;
             }
+            
+            if (trainPercent < 0 || valPercent < 0 || testPercent < 0) {
+                alert('割合は0以上で入力してください');
+                return;
+            }
+            
+            const requestData = {
+                train_percent: trainPercent,
+                val_percent: valPercent,
+                test_percent: testPercent,
+                preview_only: true
+            };
             
             const button = document.querySelector('.preview-button');
             const originalText = button.textContent;
@@ -1207,7 +1027,7 @@
                 const result = await response.json();
                 
                 if (response.ok) {
-                    displayPreviewResult(result, advancedMode);
+                    displayPreviewResult(result);
                 } else {
                     alert(result.error || 'プレビューの取得に失敗しました');
                 }
@@ -1220,128 +1040,58 @@
             }
         }
         
-        function displayPreviewResult(result, advancedMode) {
+        function displayPreviewResult(result) {
             const previewDiv = document.getElementById('splitPreview');
             
-            if (advancedMode) {
-                let sublabelStatsHtml = '';
-                for (const [color, stats] of Object.entries(result.sublabel_stats)) {
-                    const colorName = {
-                        'black': '黒',
-                        'brown': '茶色', 
-                        'gray': '灰色',
-                        'pink': 'ピンク',
-                        'marble': 'マーブル',
-                        'other': 'その他'
-                    }[color] || color;
-                    
-                    sublabelStatsHtml += `
-                        <div class="sublabel-stat-group">
-                            <div class="sublabel-stat-title">${colorName} (${stats.total}枚)</div>
-                            <div class="sublabel-stat-values">
-                                <span>Train: ${stats.train}枚</span>
-                                <span>Val: ${stats.val}枚</span>
-                                <span>Test: ${stats.test}枚</span>
-                            </div>
-                        </div>
-                    `;
-                }
-                
-                previewDiv.innerHTML = `
-                    <h4>📊 サブラベル別分割プレビュー</h4>
-                    <p>総画像数: <strong>${result.total_images}枚</strong></p>
-                    <div class="preview-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">${result.train_count}枚</div>
-                            <div class="stat-label">Train</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${result.val_count}枚</div>
-                            <div class="stat-label">Val</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${result.test_count}枚</div>
-                            <div class="stat-label">Test</div>
-                        </div>
+            previewDiv.innerHTML = `
+                <h4>📊 分割プレビュー</h4>
+                <p>メインラベル設定済み画像: <strong>${result.total_images}枚</strong></p>
+                <div class="preview-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">${result.train_count}枚</div>
+                        <div class="stat-label">Train (${result.train_percent_actual}%)</div>
                     </div>
-                    <h5>サブラベル別詳細</h5>
-                    <div class="sublabel-preview-stats">
-                        ${sublabelStatsHtml}
+                    <div class="stat-item">
+                        <div class="stat-value">${result.val_count}枚</div>
+                        <div class="stat-label">Val (${result.val_percent_actual}%)</div>
                     </div>
-                    <p style="margin-top: 15px; color: #666; font-size: 14px;">
-                        ⚠️ 実行すると既存の分割設定は上書きされます
-                    </p>
-                `;
-            } else {
-                previewDiv.innerHTML = `
-                    <h4>📊 分割プレビュー</h4>
-                    <p>メインラベル設定済み画像: <strong>${result.total_images}枚</strong></p>
-                    <div class="preview-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">${result.train_count}枚</div>
-                            <div class="stat-label">Train (${result.train_percent_actual}%)</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${result.val_count}枚</div>
-                            <div class="stat-label">Val (${result.val_percent_actual}%)</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${result.test_count}枚</div>
-                            <div class="stat-label">Test (${result.test_percent_actual}%)</div>
-                        </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${result.test_count}枚</div>
+                        <div class="stat-label">Test (${result.test_percent_actual}%)</div>
                     </div>
-                    <p style="margin-top: 15px; color: #666; font-size: 14px;">
-                        ⚠️ 実行すると既存の分割設定は上書きされます
-                    </p>
-                `;
-            }
+                </div>
+                <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                    ⚠️ 実行すると既存の分割設定は上書きされます
+                </p>
+            `;
             
             previewDiv.style.display = 'block';
             document.getElementById('splitResult').style.display = 'none';
         }
         
         async function executeAutoSplit() {
-            const advancedMode = document.getElementById('advancedMode').checked;
-            let requestData;
-            let confirmMessage;
+            const trainPercent = parseFloat(document.getElementById('trainPercent').value);
+            const valPercent = parseFloat(document.getElementById('valPercent').value);
+            const testPercent = parseFloat(document.getElementById('testPercent').value);
             
-            try {
-                if (advancedMode) {
-                    const sublabelSettings = collectSublabelSplitSettings();
-                    requestData = {
-                        advanced_mode: true,
-                        sublabel_splits: sublabelSettings,
-                        overwrite_existing: true
-                    };
-                    confirmMessage = 'サブラベル別の設定でメインラベル設定済みの全ての画像を分割します。\n既存の分割設定も上書きされます。実行しますか？';
-                } else {
-                    const trainPercent = parseFloat(document.getElementById('trainPercent').value);
-                    const valPercent = parseFloat(document.getElementById('valPercent').value);
-                    const testPercent = parseFloat(document.getElementById('testPercent').value);
-                    
-                    const total = trainPercent + valPercent + testPercent;
-                    if (Math.abs(total - 100) > 0.01) {
-                        alert(`割合の合計が100%になりません: ${total}%`);
-                        return;
-                    }
-                    
-                    if (trainPercent < 0 || valPercent < 0 || testPercent < 0) {
-                        alert('割合は0以上で入力してください');
-                        return;
-                    }
-                    
-                    requestData = {
-                        train_percent: trainPercent,
-                        val_percent: valPercent,
-                        test_percent: testPercent,
-                        overwrite_existing: true
-                    };
-                    confirmMessage = `メインラベル設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
-                }
-            } catch (error) {
-                alert(error.message);
+            const total = trainPercent + valPercent + testPercent;
+            if (Math.abs(total - 100) > 0.01) {
+                alert(`割合の合計が100%になりません: ${total}%`);
                 return;
             }
+            
+            if (trainPercent < 0 || valPercent < 0 || testPercent < 0) {
+                alert('割合は0以上で入力してください');
+                return;
+            }
+            
+            const requestData = {
+                train_percent: trainPercent,
+                val_percent: valPercent,
+                test_percent: testPercent,
+                overwrite_existing: true
+            };
+            const confirmMessage = `メインラベル設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
             
             if (!confirm(confirmMessage)) {
                 return;
@@ -1362,7 +1112,7 @@
                 const result = await response.json();
                 
                 if (response.ok) {
-                    displayExecuteResult(result, advancedMode);
+                    displayExecuteResult(result);
                     
                     if (images.length > 0) {
                         const response = await fetch('/api/images');
@@ -1381,81 +1131,30 @@
             }
         }
         
-        function displayExecuteResult(result, advancedMode) {
+        function displayExecuteResult(result) {
             const resultDiv = document.getElementById('splitResult');
             
-            if (advancedMode) {
-                let sublabelStatsHtml = '';
-                for (const [color, stats] of Object.entries(result.sublabel_stats)) {
-                    const colorName = {
-                        'black': '黒',
-                        'brown': '茶色', 
-                        'gray': '灰色',
-                        'pink': 'ピンク',
-                        'marble': 'マーブル',
-                        'other': 'その他'
-                    }[color] || color;
-                    
-                    sublabelStatsHtml += `
-                        <div class="sublabel-stat-group">
-                            <div class="sublabel-stat-title">${colorName} (${stats.total}枚)</div>
-                            <div class="sublabel-stat-values">
-                                <span>Train: ${stats.train}枚</span>
-                                <span>Val: ${stats.val}枚</span>
-                                <span>Test: ${stats.test}枚</span>
-                            </div>
-                        </div>
-                    `;
-                }
-                
-                resultDiv.innerHTML = `
-                    <h4>✅ サブラベル別自動分割完了</h4>
-                    <p>${result.message}</p>
-                    <div class="preview-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">${result.train_count}枚</div>
-                            <div class="stat-label">Train</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${result.val_count}枚</div>
-                            <div class="stat-label">Val</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${result.test_count}枚</div>
-                            <div class="stat-label">Test</div>
-                        </div>
+            resultDiv.innerHTML = `
+                <h4>✅ 自動分割完了</h4>
+                <p>${result.message}</p>
+                <div class="preview-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">${result.train_count}枚</div>
+                        <div class="stat-label">Train (${result.train_percent_actual}%)</div>
                     </div>
-                    <h5>サブラベル別詳細</h5>
-                    <div class="sublabel-preview-stats">
-                        ${sublabelStatsHtml}
+                    <div class="stat-item">
+                        <div class="stat-value">${result.val_count}枚</div>
+                        <div class="stat-label">Val (${result.val_percent_actual}%)</div>
                     </div>
-                    <p style="margin-top: 15px; color: #4CAF50; font-weight: bold;">
-                        🔍 レビュー画面で結果を確認できます
-                    </p>
-                `;
-            } else {
-                resultDiv.innerHTML = `
-                    <h4>✅ 自動分割完了</h4>
-                    <p>${result.message}</p>
-                    <div class="preview-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">${result.train_count}枚</div>
-                            <div class="stat-label">Train (${result.train_percent_actual}%)</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${result.val_count}枚</div>
-                            <div class="stat-label">Val (${result.val_percent_actual}%)</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${result.test_count}枚</div>
-                            <div class="stat-label">Test (${result.test_percent_actual}%)</div>
-                        </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${result.test_count}枚</div>
+                        <div class="stat-label">Test (${result.test_percent_actual}%)</div>
                     </div>
-                    <p style="margin-top: 15px; color: #4CAF50; font-weight: bold;">
-                        🔍 レビュー画面で結果を確認できます
-                    </p>
-                `;
-            }
+                </div>
+                <p style="margin-top: 15px; color: #4CAF50; font-weight: bold;">
+                    🔍 レビュー画面で結果を確認できます
+                </p>
+            `;
             
             resultDiv.style.display = 'block';
             document.getElementById('splitPreview').style.display = 'none';
