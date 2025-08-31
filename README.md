@@ -14,9 +14,12 @@ YOLOv8モデル（例: models/8_30_best.pt）を使い、未手動修正画像�
 python app.py detect_nose
 ```
 
+
 ### 動作仕様
 - is_manual=1（手動修正済み）の画像は上書きしません
 - bboxは `{x_min, y_min, x_max, y_max}` 形式でDBに保存されます
+- main_label（鼻あり/なし）は自動で更新されます
+- **is_completed（作業済みフラグ）は自動検出バッチでは変更されません**（人によるチェック完了のみ手動でON）
 - 既存のサブラベルや分割情報は上書きされません
 - UI上で自動検出結果が確認できます
 
