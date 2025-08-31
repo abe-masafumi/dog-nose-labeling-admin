@@ -18,7 +18,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -32,15 +32,28 @@
             text-align: center;
         }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
+		.container {
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 20px;
+			padding-top: 80px; /* ヘッダー分の余白 */
+		}
+		.header {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			padding: 20px;
+			border-radius: 10px;
+			margin-bottom: 20px;
+			text-align: center;
+		}
+		.header h1 {
+			font-size: 2.5em;
+			margin-bottom: 10px;
+		}
+		.header p {
+			font-size: 1.1em;
+			opacity: 0.9;
+		}
 
         .main-content {
             display: grid;
@@ -469,7 +482,8 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    {% include 'header.html' with context %}
+    <div class="container" style="padding-top:80px;">
         <div class="header">
             <h1>🐕 犬の鼻ラベリング管理ツール</h1>
             <p>犬の顔画像から鼻の有無を判定し、機械学習用データセットを作成します</p>

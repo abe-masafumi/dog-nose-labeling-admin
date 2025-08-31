@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>データエクスポート | 犬の鼻ラベリング管理ツール</title>
+	<style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+		.container {
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 20px;
+			padding-top: 80px; /* ヘッダー分の余白 */
+		}
+		.header {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			padding: 20px;
+			border-radius: 10px;
+			margin-bottom: 20px;
+			text-align: center;
+		}
+		.header h1 {
+			font-size: 2.5em;
+			margin-bottom: 10px;
+		}
+		.header p {
+			font-size: 1.1em;
+			opacity: 0.9;
+		}
+	</style>
+</head>
+<body>
+	{% include 'header.html' with context %}
+	<div class="container" style="padding-top:80px;">
+		<div class="header">
+			<h1>📁 データエクスポート</h1>
+			<p>データセットのエクスポートや自動分割を行う画面です</p>
+		</div>
+		<!-- ここにエクスポート機能や自動分割UIを追加してください -->
+		<div style="text-align:center; color:#888; margin-top:40px;">エクスポート機能はここに実装してください。</div>
+	</div>
+</body>
+</html>

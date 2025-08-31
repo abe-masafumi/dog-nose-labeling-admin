@@ -12,6 +12,9 @@ import random
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dog-nose-labeling-secret-key'
 
+@app.route('/export')
+def export_screen():
+    return render_template('export.html')
 
 # 画像1枚分のデータセット（画像＋YOLOラベルtxt）zipのみをエクスポート
 @app.route('/api/export_single/<int:image_id>')

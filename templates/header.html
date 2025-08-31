@@ -1,0 +1,55 @@
+<!-- templates/header.html: 画面上部固定グローバルヘッダー -->
+<style>
+.global-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    z-index: 1000;
+    box-shadow: 0 2px 8px #0002;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 60px;
+}
+.global-header .logo {
+    font-size: 1.5em;
+    font-weight: bold;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.global-header .nav {
+    display: flex;
+    gap: 8px;
+}
+.global-header .nav-button {
+    background: none;
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+.global-header .nav-button.active, .global-header .nav-button:focus {
+    background: #4b3fa2;
+}
+.global-header .nav-button:hover {
+    background: #5a4fcf;
+}
+</style>
+<div class="global-header">
+    <div class="logo">🐕 犬の鼻ラベリング</div>
+    <div class="nav">
+        <a href="/" class="nav-button {% if active_page == 'label' %}active{% endif %}">ラベリング</a>
+        <a href="/review" class="nav-button {% if active_page == 'review' %}active{% endif %}">レビュー</a>
+        <a href="/export" class="nav-button {% if active_page == 'export' %}active{% endif %}">エクスポート</a>
+    </div>
+</div>
