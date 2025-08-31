@@ -1159,13 +1159,7 @@
                     canvas.style.display = 'none';
                 }
             }
-            // メインラベル変更時にcanvas表示を制御
-            window.setMainLabel = (function(orig){
-                return function(label) {
-                    orig(label);
-                    updateCanvasVisibility();
-                }
-            })(window.setMainLabel);
+            // メインラベル変更時にcanvas表示を制御（setMainLabel内で直接呼ぶように変更）
             // 画像切替時にも反映
             window.loadImage = (function(orig){
                 return function(index) {
@@ -1249,6 +1243,22 @@
                 currentMainLabel = label;
             }
             updateUI();
+            // メインラベルが'nose'になったらcanvasを即座に有効化
+            const wrapper = document.getElementById('imageCanvasWrapper');
+            const canvas = wrapper ? wrapper.querySelector('#bboxCanvas') : null;
+            const img = wrapper ? wrapper.querySelector('img') : null;
+            if (canvas && img) {
+                if (currentMainLabel === 'nose') {
+                    canvas.style.display = 'block';
+                    // bboxが未設定なら新規作成モードにする
+                    if (!images[currentImageIndex].bbox) {
+                        window.currentBbox = null;
+                    }
+                    setupBboxCanvasEvents(canvas, img);
+                } else {
+                    canvas.style.display = 'none';
+                }
+            }
         }
 
         // サブラベル切り替え（カテゴリ内単一選択・クリア可能）
@@ -1325,14 +1335,13 @@
                 });
                 
                 if (response.ok) {
-                    // 画像データを更新
-                    images[currentImageIndex].main_label = currentMainLabel;
-                    images[currentImageIndex].sub_labels = JSON.stringify(currentSubLabels);
-                    images[currentImageIndex].dataset_split = currentDatasetSplit;
-                    images[currentImageIndex].is_completed = 1;
-                    // 現在のラベル表示を更新
-                    document.getElementById('currentLabel').textContent = currentMainLabel;
-                    document.getElementById('isCompletedInfo').textContent = '✔️';
+                    // 最新データを取得して反映
+                    const imageId = images[currentImageIndex].id;
+                    const res2 = await fetch(`/api/images/${imageId}`);
+                    if (res2.ok) {
+                        const updated = await res2.json();
+                        images[currentImageIndex] = updated;
+                    }
                     // 次の画像に移動
                     if (currentImageIndex < images.length - 1) {
                         nextImage();
