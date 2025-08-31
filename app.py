@@ -45,16 +45,16 @@ def detect_nose_for_all_images(model_path='models/8_30_best.pt'):
         cursor.execute('SELECT COUNT(*) FROM labels WHERE image_path = ?', (filepath,))
         exists = cursor.fetchone()[0] > 0
         if exists:
-            # bbox, is_completed, is_manual, updated_atのみ更新
+            # bbox, main_label, is_manual, updated_atのみ更新（is_completedは自動で変更しない）
             cursor.execute('''
-                UPDATE labels SET bbox = ?, is_completed = 1, is_manual = 0, updated_at = CURRENT_TIMESTAMP
+                UPDATE labels SET bbox = ?, main_label = ?, is_manual = 0, updated_at = CURRENT_TIMESTAMP
                 WHERE image_path = ?
-            ''', (json.dumps(bbox), filepath))
+            ''', (json.dumps(bbox), 'nose', filepath))
         else:
-            # 新規レコード挿入
+            # 新規レコード挿入（is_completedはNULL/未設定で挿入）
             cursor.execute('''
-                INSERT INTO labels (image_path, main_label, sub_labels, dataset_split, bbox, is_completed, is_manual, updated_at)
-                VALUES (?, ?, ?, ?, ?, 1, 0, CURRENT_TIMESTAMP)
+                INSERT INTO labels (image_path, main_label, sub_labels, dataset_split, bbox, is_manual, updated_at)
+                VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
             ''', (filepath, 'nose', '[]', None, json.dumps(bbox)))
         print(f'Detected and saved: {filepath}')
     conn.commit()
