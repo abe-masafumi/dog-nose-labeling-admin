@@ -410,8 +410,8 @@
                         <span id="fileName">-</span>
                     </div>
                     <div class="info-item">
-                        <span>パス:</span>
-                        <span id="filePath">-</span>
+                        <span style="display:none;">パス:</span>
+                        <span id="filePath" style="display:none;">-</span>
                     </div>
                     <div class="info-item">
                         <span>現在のラベル:</span>
@@ -422,12 +422,12 @@
                         <span id="bboxInfo">-</span>
                     </div>
                     <div class="info-item">
-                        <span>作業済み:</span>
-                        <span id="isCompletedInfo">-</span>
+                        <span>BBox修正状況:</span>
+                        <span id="isManualInfo">-</span>
                     </div>
                     <div class="info-item">
-                        <span>手動修正:</span>
-                        <span id="isManualInfo">-</span>
+                        <span>作業状況:</span>
+                        <span id="isCompletedInfo">-</span>
                     </div>
                 </div>
             </div>
@@ -1179,16 +1179,29 @@
             // bbox情報表示
             let bboxObj = image.bbox ? (typeof image.bbox === 'string' ? JSON.parse(image.bbox) : image.bbox) : null;
             if (bboxObj && bboxObj.x_min != null) {
-                document.getElementById('bboxInfo').textContent = `x_min: ${bboxObj.x_min}, y_min: ${bboxObj.y_min}, x_max: ${bboxObj.x_max}, y_max: ${bboxObj.y_max}`;
+                // 小数点1桁で省略し、x1,y1,x2,y2形式で表示
+                const x1 = Math.round(bboxObj.x_min * 10) / 10;
+                const y1 = Math.round(bboxObj.y_min * 10) / 10;
+                const x2 = Math.round(bboxObj.x_max * 10) / 10;
+                const y2 = Math.round(bboxObj.y_max * 10) / 10;
+                document.getElementById('bboxInfo').textContent = `(${x1}, ${y1}, ${x2}, ${y2})`;
             } else {
                 document.getElementById('bboxInfo').textContent = '-';
             }
             // is_completed情報表示
-            let isCompleted = (image.is_completed === 1 || image.is_completed === true || image.is_completed === '1') ? '✔️' : '✗';
-            document.getElementById('isCompletedInfo').textContent = isCompleted;
-            // is_manual情報表示
-            let isManual = (image.is_manual === 1 || image.is_manual === true || image.is_manual === '1') ? '✔️' : '✗';
-            document.getElementById('isManualInfo').textContent = isManual;
+            // 作業状況表示
+            let isCompletedText = (image.is_completed === 1 || image.is_completed === true || image.is_completed === '1') ? '作業済み' : '未作業';
+            document.getElementById('isCompletedInfo').textContent = isCompletedText;
+            // BBox修正状況表示
+            let isManualText = '-';
+            if (image.is_manual === 'manual' || image.is_manual === 1 || image.is_manual === true) {
+                isManualText = '手動';
+            } else if (image.is_manual === 'auto') {
+                isManualText = '自動';
+            } else if (image.is_manual === null || image.is_manual === undefined) {
+                isManualText = '未設定';
+            }
+            document.getElementById('isManualInfo').textContent = isManualText;
             
             // インデックス更新
             document.getElementById('currentIndex').textContent = index + 1;
