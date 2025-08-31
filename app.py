@@ -408,7 +408,7 @@ def filter_images():
                l.main_label, l.sub_labels, l.dataset_split
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
-        WHERE 1=1
+        WHERE l.is_completed = 1
     '''
     params = []
     
