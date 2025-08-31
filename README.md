@@ -37,6 +37,8 @@ cd dog-nose-labeling-admin
 
 2. **依存関係のインストール**
 ```bash
+source venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
@@ -179,3 +181,6 @@ dataset/
 ---
 
 **Link to Devin run**: https://app.devin.ai/sessions/a157972900e64fc0966e757cf8f7a9c5
+
+
+python main.py sample.jpg "0 0.190278 0.200391 0.183333 0.103125"   

@@ -485,13 +485,36 @@
                     <button class="nav-button" id="nextBtn" onclick="nextImage()">次の画像 →</button>
                 </div>
 
-                <div class="image-container" id="imageContainer">
-                    <div class="loading">画像を読み込み中...</div>
-                    <!-- 画像とcanvasを重ねて表示するラッパー -->
-                    <div id="imageCanvasWrapper" style="position: relative; display: inline-block;">
-                        <!-- 画像はJSで挿入 -->
-                        <!-- canvasは画像と同じサイズ・位置で重ねる -->
-                        <canvas id="bboxCanvas" style="position: absolute; left: 0; top: 0; z-index: 2; display: none;"></canvas>
+                <div class="image-container" id="imageContainer" style="display: flex; align-items: center; gap: 32px; min-height: 500px;">
+                    <div style="flex-shrink:0;">
+                        <div class="loading">画像を読み込み中...</div>
+                        <!-- 画像とcanvasを重ねて表示するラッパー -->
+                        <div id="imageCanvasWrapper" style="position: relative; display: inline-block;">
+                            <!-- 画像はJSで挿入 -->
+                            <!-- canvasは画像と同じサイズ・位置で重ねる -->
+                            <canvas id="bboxCanvas" style="position: absolute; left: 0; top: 0; z-index: 2; display: none;"></canvas>
+                        </div>
+                        <button id="openOriginalModalBtn" class="nav-button" style="margin-top: 12px; width: 100%;">元画像サイズで編集</button>
+                    </div>
+        <!-- 元画像サイズ編集モーダル -->
+        <div id="originalModal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+            <div style="background:#fff; border-radius:12px; padding:24px; position:relative; max-width:98vw; max-height:98vh; overflow:auto;">
+                <button id="closeOriginalModalBtn" style="position:absolute; right:12px; top:12px; font-size:20px; background:none; border:none; cursor:pointer;">×</button>
+                <div id="originalModalContent" style="display:flex; flex-direction:column; align-items:center;">
+                    <!-- 元画像とcanvasをここに動的に挿入 -->
+                </div>
+                <div style="margin-top:16px; text-align:center;">
+                    <button id="saveOriginalModalBtn" class="nav-button">編集内容を保存</button>
+                </div>
+            </div>
+        </div>
+                    <div style="flex:1; display:flex; justify-content:center; align-items:center; min-width:0;">
+                        <div id="croppedBoxWrapper" style="min-width:120px; max-width:400px; display:none; text-align:center; align-self:center; width:100%;">
+                            <div style="font-size:13px;color:#888;margin-bottom:4px;">鼻領域プレビュー</div>
+                            <div style="display:flex;justify-content:center;align-items:center;">
+                                <canvas id="croppedBoxCanvas" style="border:2px solid #aaa; border-radius:12px; background:#fff; max-width:100%; max-height:400px; display:block;"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -618,6 +641,9 @@
                         <button class="export-button" onclick="exportData('yolo')">YOLO</button>
                     </div>
                     <button class="dataset-export" onclick="exportDataset()">📁 データセット出力</button>
+                    <div style="margin-top:10px;">
+                        <button class="export-button" onclick="exportCurrentImageDataset()">この画像だけデータセットZIP</button>
+                    </div>
                     <a href="/review" class="nav-button" style="display: inline-block; margin-top: 10px; text-decoration: none;">🔍 レビュー画面</a>
                 </div>
 
@@ -685,6 +711,245 @@
     </div>
 
     <script>
+        // この画像だけデータセットZIPエクスポート
+        async function exportCurrentImageDataset() {
+            if (!images || images.length === 0) {
+                alert('画像がありません');
+                return;
+            }
+            const image = images[currentImageIndex];
+            if (!image || !image.id) {
+                alert('画像情報が取得できません');
+                return;
+            }
+            const btn = document.querySelector('.export-button[onclick="exportCurrentImageDataset()"]');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'エクスポート中...';
+            }
+            try {
+                const res = await fetch(`/api/export_single/${image.id}`);
+                if (!res.ok) throw new Error('エクスポートに失敗しました');
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${image.filename.replace(/\.[^.]+$/, '')}_dataset.zip`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                }, 100);
+            } catch (e) {
+                alert('エクスポートに失敗しました');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'この画像だけデータセットZIP';
+                }
+            }
+        }
+        // --- 元画像サイズ編集モーダル ---
+        let originalModal = null;
+        let originalModalContent = null;
+        let originalModalImg = null;
+        let originalModalCanvas = null;
+        let originalModalCtx = null;
+        let originalModalBbox = null;
+        let originalModalEditing = false;
+        let originalModalStartX = 0, originalModalStartY = 0;
+        let originalModalIsDrawing = false;
+        let originalModalIsMoving = false;
+        let originalModalMoveOffsetX = 0, originalModalMoveOffsetY = 0;
+        let originalModalOriginalBbox = null;
+        let originalModalResizeCorner = null;
+        let originalModalIsResizing = false;
+
+        function setupOriginalModalEvents() {
+            if (!originalModalCanvas) return;
+            // 既存イベントを除去
+            originalModalCanvas.onmousedown = null;
+            originalModalCanvas.onmousemove = null;
+            originalModalCanvas.onmouseup = null;
+            // bbox取得
+            let bbox = originalModalBbox;
+            // 角ハンドル判定
+            function getCornerHandle(x, y, bbox, handleSize = 10) {
+                if (!bbox) return null;
+                let { x_min, y_min, x_max, y_max } = bbox;
+                if (x_min > x_max) [x_min, x_max] = [x_max, x_min];
+                if (y_min > y_max) [y_min, y_max] = [y_max, y_min];
+                const corners = [
+                    { name: 'tl', x: x_min, y: y_min },
+                    { name: 'tr', x: x_max, y: y_min },
+                    { name: 'bl', x: x_min, y: y_max },
+                    { name: 'br', x: x_max, y: y_max }
+                ];
+                for (const corner of corners) {
+                    if (Math.abs(x - corner.x) <= handleSize && Math.abs(y - corner.y) <= handleSize) {
+                        return corner.name;
+                    }
+                }
+                return null;
+            }
+            originalModalCanvas.addEventListener('mousedown', function(e) {
+                const rect = originalModalCanvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (originalModalCanvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (originalModalCanvas.height / rect.height);
+                // 角ハンドル判定
+                const corner = bbox ? getCornerHandle(x, y, bbox) : null;
+                if (bbox && corner) {
+                    // リサイズ
+                    originalModalIsResizing = true;
+                    originalModalResizeCorner = corner;
+                    originalModalOriginalBbox = { ...bbox };
+                } else if (bbox && x >= bbox.x_min && x <= bbox.x_max && y >= bbox.y_min && y <= bbox.y_max) {
+                    // 移動
+                    originalModalIsMoving = true;
+                    originalModalOriginalBbox = { ...bbox };
+                    originalModalMoveOffsetX = x - bbox.x_min;
+                    originalModalMoveOffsetY = y - bbox.y_min;
+                } else {
+                    // 新規作成
+                    originalModalIsDrawing = true;
+                    bbox = { x_min: x, y_min: y, x_max: x, y_max: y };
+                }
+                originalModalBbox = bbox;
+            });
+            originalModalCanvas.addEventListener('mousemove', function(e) {
+                const rect = originalModalCanvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (originalModalCanvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (originalModalCanvas.height / rect.height);
+                if (originalModalIsDrawing) {
+                    bbox.x_max = x;
+                    bbox.y_max = y;
+                    drawOriginalModalBbox();
+                } else if (originalModalIsMoving) {
+                    const w = originalModalOriginalBbox.x_max - originalModalOriginalBbox.x_min;
+                    const h = originalModalOriginalBbox.y_max - originalModalOriginalBbox.y_min;
+                    bbox.x_min = x - originalModalMoveOffsetX;
+                    bbox.y_min = y - originalModalMoveOffsetY;
+                    bbox.x_max = bbox.x_min + w;
+                    bbox.y_max = bbox.y_min + h;
+                    drawOriginalModalBbox();
+                } else if (originalModalIsResizing) {
+                    let { x_min, y_min, x_max, y_max } = originalModalOriginalBbox;
+                    switch (originalModalResizeCorner) {
+                        case 'tl':
+                            bbox.x_min = x;
+                            bbox.y_min = y;
+                            break;
+                        case 'tr':
+                            bbox.x_max = x;
+                            bbox.y_min = y;
+                            break;
+                        case 'bl':
+                            bbox.x_min = x;
+                            bbox.y_max = y;
+                            break;
+                        case 'br':
+                            bbox.x_max = x;
+                            bbox.y_max = y;
+                            break;
+                    }
+                    drawOriginalModalBbox();
+                }
+                originalModalBbox = bbox;
+            });
+            originalModalCanvas.addEventListener('mouseup', function(e) {
+                originalModalIsDrawing = false;
+                originalModalIsMoving = false;
+                originalModalIsResizing = false;
+            });
+        }
+
+        function drawOriginalModalBbox() {
+            if (!originalModalCanvas || !originalModalBbox) return;
+            const ctx = originalModalCanvas.getContext('2d');
+            ctx.clearRect(0, 0, originalModalCanvas.width, originalModalCanvas.height);
+            const { x_min, y_min, x_max, y_max } = originalModalBbox;
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x_min, y_min, x_max - x_min, y_max - y_min);
+            // 角ハンドル
+            ctx.fillStyle = 'deepskyblue';
+            const handleSize = 8;
+            [
+                [x_min, y_min], [x_max, y_min], [x_min, y_max], [x_max, y_max]
+            ].forEach(([cx, cy]) => {
+                ctx.fillRect(cx - handleSize/2, cy - handleSize/2, handleSize, handleSize);
+            });
+        }
+
+        function openOriginalModal(imgUrl, bbox) {
+            if (!originalModal) {
+                originalModal = document.getElementById('originalModal');
+                originalModalContent = document.getElementById('originalModalContent');
+            }
+            originalModalContent.innerHTML = '';
+            originalModalImg = new window.Image();
+            originalModalImg.src = imgUrl;
+            originalModalImg.onload = function() {
+                // 元画像サイズでcanvas生成
+                originalModalCanvas = document.createElement('canvas');
+                originalModalCanvas.width = originalModalImg.naturalWidth;
+                originalModalCanvas.height = originalModalImg.naturalHeight;
+                originalModalCanvas.style.width = originalModalImg.naturalWidth + 'px';
+                originalModalCanvas.style.height = originalModalImg.naturalHeight + 'px';
+                originalModalCanvas.style.position = 'absolute';
+                originalModalCanvas.style.left = '0';
+                originalModalCanvas.style.top = '0';
+                originalModalCanvas.style.zIndex = '2';
+                // ラッパー
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'relative';
+                wrapper.style.display = 'inline-block';
+                wrapper.appendChild(originalModalImg);
+                wrapper.appendChild(originalModalCanvas);
+                originalModalContent.appendChild(wrapper);
+                // bbox初期値
+                if (bbox && typeof bbox === 'object' && 'x_min' in bbox) {
+                    originalModalBbox = { ...bbox };
+                } else {
+                    originalModalBbox = null;
+                }
+                drawOriginalModalBbox();
+                setupOriginalModalEvents();
+            };
+            originalModal.style.display = 'flex';
+        }
+
+        function closeOriginalModal() {
+            if (originalModal) originalModal.style.display = 'none';
+        }
+
+        function saveOriginalModalBbox() {
+            // 編集結果を反映
+            if (originalModalBbox) {
+                // 現在表示中画像のbboxに上書き
+                if (images[currentImageIndex]) {
+                    images[currentImageIndex].bbox = { ...originalModalBbox };
+                }
+                // window.currentBboxにも反映（保存時に正しい値が送信されるように）
+                window.currentBbox = { ...originalModalBbox };
+                drawBboxOnCanvas(originalModalBbox, document.getElementById('bboxCanvas'));
+            }
+            closeOriginalModal();
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('openOriginalModalBtn').onclick = function() {
+                // 現在画像のURLとbbox
+                const img = document.querySelector('#imageCanvasWrapper img');
+                const bbox = images[currentImageIndex] && images[currentImageIndex].bbox ? { ...images[currentImageIndex].bbox } : null;
+                if (img) {
+                    openOriginalModal(img.src, bbox);
+                }
+            };
+            document.getElementById('closeOriginalModalBtn').onclick = closeOriginalModal;
+            document.getElementById('saveOriginalModalBtn').onclick = saveOriginalModalBbox;
+        });
         let images = [];
         let currentImageIndex = 0;
         let currentMainLabel = null;
@@ -732,12 +997,12 @@
         // 画像を読み込み
         function loadImage(index) {
             if (index < 0 || index >= images.length) return;
-            
             currentImageIndex = index;
             const image = images[index];
-            
             // 画像とcanvasをラッパー内に挿入
             const wrapper = document.getElementById('imageCanvasWrapper');
+            const cropWrapper = document.getElementById('croppedBoxWrapper');
+            const croppedCanvas = document.getElementById('croppedBoxCanvas');
             if (wrapper) {
                 const loadingDiv = document.querySelector('#imageContainer .loading');
                 if (loadingDiv) loadingDiv.style.display = 'none';
@@ -746,36 +1011,70 @@
                 img.src = `/images/${image.filename}`;
                 img.alt = image.filename;
                 img.className = 'image-display';
+                img.style.display = 'block';
                 img.onload = function() {
+                    // 元画像サイズでcanvas生成
                     let canvas = document.createElement('canvas');
                     canvas.id = 'bboxCanvas';
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
                     canvas.style.position = 'absolute';
                     canvas.style.left = '0';
                     canvas.style.top = '0';
                     canvas.style.zIndex = '2';
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    canvas.style.width = img.width + 'px';
-                    canvas.style.height = img.height + 'px';
+                    // 表示サイズをimgと合わせる
+                    canvas.style.width = '100%';
+                    canvas.style.height = '100%';
+                    img.style.width = '100%';
+                    img.style.height = 'auto';
+                    let showCropped = false;
+                    let bboxObj = null;
                     if (image.main_label === 'nose') {
                         canvas.style.display = 'block';
-                        let bboxObj = image.bbox ? (typeof image.bbox === 'string' ? JSON.parse(image.bbox) : image.bbox) : null;
-                        drawBboxOnCanvas(bboxObj, canvas, img.width / img.naturalWidth, img.height / img.naturalHeight);
+                        bboxObj = image.bbox ? (typeof image.bbox === 'string' ? JSON.parse(image.bbox) : image.bbox) : null;
+                        drawBboxOnCanvas(bboxObj, canvas);
                         window.currentBbox = bboxObj;
                         images[currentImageIndex].bbox = bboxObj;
+                        // bbox領域くり抜き表示
+                        if (bboxObj && bboxObj.x_min != null && bboxObj.y_min != null && bboxObj.x_max != null && bboxObj.y_max != null) {
+                            showCropped = true;
+                            // 元画像のnaturalサイズ基準で切り抜き、2倍拡大表示
+                            const cropW = bboxObj.x_max - bboxObj.x_min;
+                            const cropH = bboxObj.y_max - bboxObj.y_min;
+                            const scale = 2.0;
+                            croppedCanvas.width = cropW * scale;
+                            croppedCanvas.height = cropH * scale;
+                            croppedCanvas.style.width = (cropW * scale) + 'px';
+                            croppedCanvas.style.height = (cropH * scale) + 'px';
+                            const ctx = croppedCanvas.getContext('2d');
+                            ctx.clearRect(0, 0, cropW * scale, cropH * scale);
+                            ctx.drawImage(
+                                img,
+                                bboxObj.x_min,
+                                bboxObj.y_min,
+                                cropW,
+                                cropH,
+                                0, 0, cropW * scale, cropH * scale
+                            );
+                        }
                     } else {
                         canvas.style.display = 'none';
                         window.currentBbox = null;
                         images[currentImageIndex].bbox = null;
                     }
+                    // ラッパーをposition:relativeでimg/canvas重ねる
+                    wrapper.style.position = 'relative';
+                    wrapper.style.display = 'inline-block';
+                    wrapper.appendChild(img);
                     wrapper.appendChild(canvas);
-                    // canvasイベントを毎回バインド（imgも渡す）
+                    // canvas上でbbox編集できるようイベントバインド
                     setupBboxCanvasEvents(canvas, img);
+                    // くり抜き領域の表示切替
+                    if (cropWrapper) cropWrapper.style.display = showCropped ? 'block' : 'none';
                 };
-                wrapper.appendChild(img);
             }
         // バウンディングボックス描画関数
-        function drawBboxOnCanvas(bboxJson, canvas) {
+    window.drawBboxOnCanvas = function drawBboxOnCanvas(bboxJson, canvas) {
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (!bboxJson) return;

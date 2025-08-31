@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, jsonify, send_file
 import sqlite3
 import os
@@ -10,6 +11,77 @@ import random
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dog-nose-labeling-secret-key'
+
+
+# 画像1枚分のデータセット（画像＋YOLOラベルtxt）zipのみをエクスポート
+@app.route('/api/export_single/<int:image_id>')
+def export_single_image_dataset(image_id):
+    import zipfile
+    conn = sqlite3.connect('labels.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT i.filename, i.filepath, l.main_label, l.bbox
+        FROM images i
+        LEFT JOIN labels l ON i.filepath = l.image_path
+        WHERE i.id = ?
+    ''', (image_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return jsonify({'error': '画像が見つかりません'}), 404
+    filename, filepath, main_label, bbox = row
+    # 一時ディレクトリ作成
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # 画像コピー
+        img_out = os.path.join(tmpdir, filename)
+        try:
+            import shutil
+            shutil.copy2(filepath, img_out)
+        except Exception as e:
+            return jsonify({'error': f'画像コピー失敗: {e}'}), 500
+        # YOLOラベルtxt作成
+        label_txt = os.path.join(tmpdir, os.path.splitext(filename)[0] + '.txt')
+        yolo_line = ''
+        if main_label == 'nose' and bbox:
+            try:
+                bbox_data = json.loads(bbox) if isinstance(bbox, str) else bbox
+                if isinstance(bbox_data, dict):
+                    if all(k in bbox_data for k in ('x', 'y', 'width', 'height')):
+                        x = bbox_data.get('x')
+                        y = bbox_data.get('y')
+                        w = bbox_data.get('width')
+                        h = bbox_data.get('height')
+                    elif all(k in bbox_data for k in ('x_min', 'y_min', 'x_max', 'y_max')):
+                        x = bbox_data['x_min']
+                        y = bbox_data['y_min']
+                        w = bbox_data['x_max'] - bbox_data['x_min']
+                        h = bbox_data['y_max'] - bbox_data['y_min']
+                    else:
+                        x = y = w = h = None
+                elif isinstance(bbox_data, list) and len(bbox_data) == 4:
+                    x, y, w, h = bbox_data
+                else:
+                    x = y = w = h = None
+                if None not in (x, y, w, h):
+                    from PIL import Image
+                    with Image.open(filepath) as im:
+                        img_w, img_h = im.size
+                    x_center = (x + w/2) / img_w
+                    y_center = (y + h/2) / img_h
+                    w_norm = w / img_w
+                    h_norm = h / img_h
+                    yolo_line = f"0 {x_center:.6f} {y_center:.6f} {w_norm:.6f} {h_norm:.6f}"
+            except Exception as e:
+                print(f"YOLOラベル変換エラー: {filepath} -> {e}")
+        with open(label_txt, 'w', encoding='utf-8') as f:
+            f.write(yolo_line + '\n')
+        # zip作成
+        zip_path = os.path.join(tmpdir, f'single_dataset_{filename}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip')
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            zipf.write(img_out, arcname=filename)
+            zipf.write(label_txt, arcname=os.path.basename(label_txt))
+        return send_file(zip_path, as_attachment=True, download_name=os.path.basename(zip_path))
 
 def init_db():
     conn = sqlite3.connect('labels.db')
@@ -266,17 +338,24 @@ def export_dataset():
                 bbox_data = json.loads(bbox) if isinstance(bbox, str) else bbox
                 # bboxは[x, y, w, h] or dict型想定
                 if isinstance(bbox_data, dict):
-                    x = bbox_data.get('x')
-                    y = bbox_data.get('y')
-                    w = bbox_data.get('width')
-                    h = bbox_data.get('height')
+                    if all(k in bbox_data for k in ('x', 'y', 'width', 'height')):
+                        x = bbox_data.get('x')
+                        y = bbox_data.get('y')
+                        w = bbox_data.get('width')
+                        h = bbox_data.get('height')
+                    elif all(k in bbox_data for k in ('x_min', 'y_min', 'x_max', 'y_max')):
+                        x = bbox_data['x_min']
+                        y = bbox_data['y_min']
+                        w = bbox_data['x_max'] - bbox_data['x_min']
+                        h = bbox_data['y_max'] - bbox_data['y_min']
+                    else:
+                        x = y = w = h = None
                 elif isinstance(bbox_data, list) and len(bbox_data) == 4:
                     x, y, w, h = bbox_data
                 else:
                     x = y = w = h = None
                 # YOLO形式: class x_center y_center width height (正規化済み)
                 if None not in (x, y, w, h):
-                    # 画像サイズ取得
                     from PIL import Image
                     with Image.open(filepath) as im:
                         img_w, img_h = im.size
