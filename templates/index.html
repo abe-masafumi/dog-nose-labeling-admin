@@ -1188,9 +1188,38 @@
             } else {
                 document.getElementById('bboxInfo').textContent = '-';
             }
-            // is_completed情報表示
-            // 作業状況表示
-            let isCompletedText = (image.is_completed === 1 || image.is_completed === true || image.is_completed === '1') ? '作業済み' : '未作業';
+            // 作業状況表示（要件に応じて判定）
+            let isCompletedText = '未作業';
+            const isCompleted = (image.is_completed === 1 || image.is_completed === true || image.is_completed === '1');
+            const mainLabel = image.main_label;
+            let subLabels = [];
+            try {
+                subLabels = image.sub_labels ? (typeof image.sub_labels === 'string' ? JSON.parse(image.sub_labels) : image.sub_labels) : [];
+            } catch(e) { subLabels = []; }
+            // サブラベルカテゴリごとに最低1つずつ選択されているか
+            const requiredCategories = [
+                ['front','side','tilted'], // 鼻の向き
+                ['clear','blurred'],       // 鮮明判定
+                ['black','brown','gray','pink','marble'], // 鼻の色
+                ['large','small'],         // 鼻の大きさ
+                ['light_fur','dark_fur']   // 毛色
+            ];
+            function allCategoriesSelected(subLabels) {
+                return requiredCategories.every(cat => cat.some(l => subLabels.includes(l)));
+            }
+            if (
+                (!isCompleted && (mainLabel !== 'nose' || !allCategoriesSelected(subLabels)))
+            ) {
+                isCompletedText = '未作業';
+            } else if (
+                isCompleted && (
+                    (!mainLabel) || (mainLabel === 'nose' && allCategoriesSelected(subLabels))
+                )
+            ) {
+                isCompletedText = '作業済み';
+            } else {
+                isCompletedText = '未作業';
+            }
             document.getElementById('isCompletedInfo').textContent = isCompletedText;
             // BBox修正状況表示
             let isManualText = '-';
