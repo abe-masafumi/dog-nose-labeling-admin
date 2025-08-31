@@ -14,7 +14,7 @@ app.config['SECRET_KEY'] = 'dog-nose-labeling-secret-key'
 
 @app.route('/export')
 def export_screen():
-    return render_template('export.html')
+    return render_template('export.html', active_page='export')
 
 # 画像1枚分のデータセット（画像＋YOLOラベルtxt）zipのみをエクスポート
 @app.route('/api/export_single/<int:image_id>')
@@ -140,11 +140,11 @@ def register_images():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', active_page='label')
 
 @app.route('/review')
 def review():
-    return render_template('review.html')
+    return render_template('review.html', active_page='review')
 
 @app.route('/api/images')
 def get_images():
@@ -230,67 +230,6 @@ def save_label():
     conn.close()
     return jsonify({'success': True})
 
-@app.route('/api/export/<format>')
-def export_data(format):
-    conn = sqlite3.connect('labels.db')
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT i.filename, i.filepath, l.main_label, l.sub_labels, l.dataset_split, l.bbox, l.is_completed
-        FROM images i
-        LEFT JOIN labels l ON i.filepath = l.image_path
-        WHERE (
-            (l.main_label = 'nose' AND l.bbox IS NOT NULL AND l.bbox != '')
-            OR (l.main_label != 'nose' AND l.is_completed = 1)
-            OR (l.main_label IS NULL OR l.main_label = '')
-        )
-    ''')
-    
-    data = []
-    for row in cursor.fetchall():
-        sub_labels = json.loads(row[3]) if row[3] else []
-        data.append({
-            'filename': row[0],
-            'filepath': row[1],
-            'main_label': row[2],
-            'sub_labels': sub_labels,
-            'dataset_split': row[4],
-            'bbox': row[5],
-            'is_completed': row[6]
-        })
-    
-    conn.close()
-    
-    if format == 'json':
-        filename = f'labels_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        return send_file(filename, as_attachment=True)
-    
-    elif format == 'csv':
-        filename = f'labels_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-        with open(filename, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow(['filename', 'filepath', 'main_label', 'sub_labels', 'dataset_split'])
-            for item in data:
-                writer.writerow([
-                    item['filename'],
-                    item['filepath'],
-                    item['main_label'],
-                    ','.join(item['sub_labels']),
-                    item['dataset_split']
-                ])
-        return send_file(filename, as_attachment=True)
-    
-    elif format == 'yolo':
-        filename = f'yolo_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.txt'
-        with open(filename, 'w', encoding='utf-8') as f:
-            for item in data:
-                if item['main_label'] == 'nose':
-                    f.write(f"0 0.5 0.5 1.0 1.0  # {item['filename']} main_label:{item['main_label']}\n")
-        return send_file(filename, as_attachment=True)
-    
-    return jsonify({'error': '無効なフォーマットです'}), 400
 
 @app.route('/api/export/dataset')
 def export_dataset():
