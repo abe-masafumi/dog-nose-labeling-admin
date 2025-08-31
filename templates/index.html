@@ -425,6 +425,10 @@
                         <span>作業済み:</span>
                         <span id="isCompletedInfo">-</span>
                     </div>
+                    <div class="info-item">
+                        <span>手動修正:</span>
+                        <span id="isManualInfo">-</span>
+                    </div>
                 </div>
             </div>
 
@@ -1188,6 +1192,9 @@
             // is_completed情報表示
             let isCompleted = (image.is_completed === 1 || image.is_completed === true || image.is_completed === '1') ? '✔️' : '✗';
             document.getElementById('isCompletedInfo').textContent = isCompleted;
+            // is_manual情報表示
+            let isManual = (image.is_manual === 1 || image.is_manual === true || image.is_manual === '1') ? '✔️' : '✗';
+            document.getElementById('isManualInfo').textContent = isManual;
             
             // インデックス更新
             document.getElementById('currentIndex').textContent = index + 1;
