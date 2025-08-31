@@ -32,35 +32,31 @@
             text-align: center;
         }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
+		.container {
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 20px;
+			padding-top: 80px; /* ヘッダー分の余白 */
+		}
 
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
+		.header {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			padding: 20px;
+			border-radius: 10px;
+			margin-bottom: 20px;
+			text-align: center;
+		}
 
-        .navigation {
-            margin-bottom: 20px;
-        }
+		.header h1 {
+			font-size: 2.5em;
+			margin-bottom: 10px;
+		}
 
-        .nav-button {
-            background-color: #667eea;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin-right: 10px;
-        }
-
-        .nav-button:hover {
-            background-color: #5a67d8;
-        }
+		.header p {
+			font-size: 1.1em;
+			opacity: 0.9;
+		}
 
         .filter-section {
             background: white;
@@ -413,15 +409,12 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔍 レビュー画面</h1>
-            <p>ラベル付けされた画像をフィルターして確認</p>
-        </div>
-
-        <div class="navigation">
-            <a href="/" class="nav-button">← ラベリング画面に戻る</a>
-        </div>
+{% include 'header.html' with context %}
+<div class="container" style="padding-top:80px;">
+            <div class="header">
+                <h1>🔍 レビュー画面</h1>
+                <p>ラベル付けされた画像をフィルターして確認</p>
+            </div>
 
         <div class="filter-section">
             <h3>🎯 フィルター条件</h3>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>データエクスポート | 犬の鼻ラベリング管理ツール</title>
+	<style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+		.container {
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 20px;
+			padding-top: 80px; /* ヘッダー分の余白 */
+		}
+		.header {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			padding: 20px;
+			border-radius: 10px;
+			margin-bottom: 20px;
+			text-align: center;
+		}
+		.header h1 {
+			font-size: 2.5em;
+			margin-bottom: 10px;
+		}
+		.header p {
+			font-size: 1.1em;
+			opacity: 0.9;
+		}
+        .auto-split-section {
+			margin: 40px 0 0 0;
+			padding: 24px;
+			border: 2px solid #4CAF50;
+			border-radius: 8px;
+			background-color: #f9f9f9;
+			max-width: 500px;
+			margin-left: auto;
+			margin-right: auto;
+		}
+		.percentage-inputs {
+			display: flex;
+			gap: 15px;
+			margin-bottom: 15px;
+			flex-wrap: wrap;
+		}
+		.input-group {
+			display: flex;
+			flex-direction: column;
+			min-width: 100px;
+		}
+		.input-group label {
+			font-weight: bold;
+			margin-bottom: 5px;
+			color: #333;
+		}
+		.input-group input {
+			padding: 8px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			font-size: 14px;
+		}
+		.auto-split-buttons {
+			display: flex;
+			gap: 10px;
+			flex-wrap: wrap;
+		}
+		.preview-button, .auto-split-button {
+			padding: 10px 20px;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+			font-size: 14px;
+			font-weight: bold;
+		}
+		.preview-button {
+			background-color: #2196F3;
+			color: white;
+		}
+		.preview-button:hover {
+			background-color: #1976D2;
+		}
+		.auto-split-button {
+			background-color: #4CAF50;
+			color: white;
+		}
+		.auto-split-button:hover {
+			background-color: #45a049;
+		}
+		.auto-split-button:disabled {
+			background-color: #cccccc;
+			cursor: not-allowed;
+		}
+		.split-preview, .split-result {
+			margin-top: 15px;
+			padding: 15px;
+			border-radius: 5px;
+			background-color: white;
+			border: 1px solid #ddd;
+		}
+		.split-preview {
+			border-left: 4px solid #2196F3;
+		}
+		.split-result {
+			border-left: 4px solid #4CAF50;
+		}
+		.preview-stats {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+			gap: 10px;
+			margin-top: 10px;
+		}
+		.stat-item {
+			text-align: center;
+			padding: 10px;
+			background-color: #f5f5f5;
+			border-radius: 4px;
+		}
+		.stat-value {
+			font-size: 18px;
+			font-weight: bold;
+			color: #333;
+		}
+		.stat-label {
+			font-size: 12px;
+			color: #666;
+			margin-top: 5px;
+		}
+	</style>
+</head>
+<body>
+	{% include 'header.html' with context %}
+	<div class="container" style="padding-top:80px;">
+		<div class="header">
+			<h1>📁 データエクスポート</h1>
+			<p>データセットのエクスポートや自動分割を行う画面です</p>
+		</div>
+		<div class="auto-split-section">
+			<h2 style="text-align:center; margin-bottom:24px;">🎯 自動データセット分割</h2>
+			<div class="auto-split-controls">
+				<div class="percentage-inputs">
+					<div class="input-group">
+						<label for="trainPercent">Train (%)</label>
+						<input type="number" id="trainPercent" value="80" min="0" max="100" step="0.1">
+					</div>
+					<div class="input-group">
+						<label for="valPercent">Val (%)</label>
+						<input type="number" id="valPercent" value="10" min="0" max="100" step="0.1">
+					</div>
+					<div class="input-group">
+						<label for="testPercent">Test (%)</label>
+						<input type="number" id="testPercent" value="10" min="0" max="100" step="0.1">
+					</div>
+				</div>
+				<div class="auto-split-buttons">
+					<button class="preview-button" onclick="previewAutoSplit()">📊 プレビュー</button>
+					<button class="auto-split-button" onclick="executeAutoSplit()">🎯 自動分割実行</button>
+				</div>
+			</div>
+			<div id="splitPreview" class="split-preview" style="display: none;"></div>
+			<div id="splitResult" class="split-result" style="display: none;"></div>
+		</div>
+		<div class="export-section" style="max-width:500px; margin:40px auto 0; background:#fff; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.07); padding:32px 24px;">
+			<h2 style="text-align:center; margin-bottom:24px;">📁 データエクスポート</h2>
+			<div class="export-buttons" style="display:grid; grid-template-columns:1fr; gap:16px;">
+				<button class="dataset-export" style="padding:16px; font-size:16px; background:#17a2b8; color:#fff; border:none; border-radius:6px; cursor:pointer;" onclick="exportDataset()">📁 データセットZIP出力</button>
+			</div>
+			<div style="margin-top:24px; text-align:center; color:#888; font-size:13px;">※「この画像だけデータセットZIP」はラベリング画面でのみ有効です</div>
+		</div>
+		<script>
+		function exportDataset() {
+			window.open('/api/export/dataset', '_blank');
+		}
+		function exportCurrentImageDataset() {
+			alert('「この画像だけデータセットZIP」はラベリング画面でご利用ください。');
+		}
+		async function previewAutoSplit() {
+			const trainPercent = parseFloat(document.getElementById('trainPercent').value);
+			const valPercent = parseFloat(document.getElementById('valPercent').value);
+			const testPercent = parseFloat(document.getElementById('testPercent').value);
+			const total = trainPercent + valPercent + testPercent;
+			if (Math.abs(total - 100) > 0.01) {
+				alert(`割合の合計が100%になりません: ${total}%`);
+				return;
+			}
+			if (trainPercent < 0 || valPercent < 0 || testPercent < 0) {
+				alert('割合は0以上で入力してください');
+				return;
+			}
+			const requestData = {
+				train_percent: trainPercent,
+				val_percent: valPercent,
+				test_percent: testPercent,
+				preview_only: true
+			};
+			const button = document.querySelector('.preview-button');
+			const originalText = button.textContent;
+			button.textContent = 'プレビュー中...';
+			button.disabled = true;
+			try {
+				const response = await fetch('/api/auto-split', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(requestData)
+				});
+				const result = await response.json();
+				if (response.ok) {
+					displayPreviewResult(result);
+				} else {
+					alert(result.error || 'プレビューの取得に失敗しました');
+				}
+			} catch (error) {
+				console.error('プレビューエラー:', error);
+				alert('プレビューの取得に失敗しました');
+			} finally {
+				button.textContent = originalText;
+				button.disabled = false;
+			}
+		}
+		function displayPreviewResult(result) {
+			const previewDiv = document.getElementById('splitPreview');
+			previewDiv.innerHTML = `
+				<h4>📊 分割プレビュー</h4>
+				<p>メインラベル設定済み画像: <strong>${result.total_images}枚</strong></p>
+				<div class="preview-stats">
+					<div class="stat-item">
+						<div class="stat-value">${result.train_count}枚</div>
+						<div class="stat-label">Train (${result.train_percent_actual}%)</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-value">${result.val_count}枚</div>
+						<div class="stat-label">Val (${result.val_percent_actual}%)</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-value">${result.test_count}枚</div>
+						<div class="stat-label">Test (${result.test_percent_actual}%)</div>
+					</div>
+				</div>
+				<p style="margin-top: 15px; color: #666; font-size: 14px;">
+					⚠️ 実行すると既存の分割設定は上書きされます
+				</p>
+			`;
+			previewDiv.style.display = 'block';
+			document.getElementById('splitResult').style.display = 'none';
+		}
+		async function executeAutoSplit() {
+			const trainPercent = parseFloat(document.getElementById('trainPercent').value);
+			const valPercent = parseFloat(document.getElementById('valPercent').value);
+			const testPercent = parseFloat(document.getElementById('testPercent').value);
+			const total = trainPercent + valPercent + testPercent;
+			if (Math.abs(total - 100) > 0.01) {
+				alert(`割合の合計が100%になりません: ${total}%`);
+				return;
+			}
+			if (trainPercent < 0 || valPercent < 0 || testPercent < 0) {
+				alert('割合は0以上で入力してください');
+				return;
+			}
+			const requestData = {
+				train_percent: trainPercent,
+				val_percent: valPercent,
+				test_percent: testPercent,
+				overwrite_existing: true
+			};
+			const confirmMessage = `メインラベル設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
+			if (!confirm(confirmMessage)) {
+				return;
+			}
+			const button = document.querySelector('.auto-split-button');
+			const originalText = button.textContent;
+			button.textContent = '分割中...';
+			button.disabled = true;
+			try {
+				const response = await fetch('/api/auto-split', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(requestData)
+				});
+				const result = await response.json();
+				if (response.ok) {
+					displayExecuteResult(result);
+				} else {
+					alert(result.error || '自動分割に失敗しました');
+				}
+			} catch (error) {
+				console.error('自動分割エラー:', error);
+				alert('自動分割に失敗しました');
+			} finally {
+				button.textContent = originalText;
+				button.disabled = false;
+			}
+		}
+		function displayExecuteResult(result) {
+			const resultDiv = document.getElementById('splitResult');
+			resultDiv.innerHTML = `
+				<h4>✅ 自動分割完了</h4>
+				<p>${result.message}</p>
+			`;
+			resultDiv.style.display = 'block';
+			document.getElementById('splitPreview').style.display = 'none';
+		}
+		</script>
+	</div>
+</body>
+</html>

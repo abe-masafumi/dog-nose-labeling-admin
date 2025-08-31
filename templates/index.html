@@ -18,7 +18,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -32,15 +32,28 @@
             text-align: center;
         }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
+		.container {
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 20px;
+			padding-top: 80px; /* ヘッダー分の余白 */
+		}
+		.header {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			padding: 20px;
+			border-radius: 10px;
+			margin-bottom: 20px;
+			text-align: center;
+		}
+		.header h1 {
+			font-size: 2.5em;
+			margin-bottom: 10px;
+		}
+		.header p {
+			font-size: 1.1em;
+			opacity: 0.9;
+		}
 
         .main-content {
             display: grid;
@@ -288,40 +301,11 @@
             background: #5a6268;
         }
 
-
-        .dataset-export {
-            width: 100%;
-            padding: 10px;
-            background: #17a2b8;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-
-        .dataset-export:hover {
-            background: #138496;
-        }
-
         .shortcuts {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 8px;
             margin-top: 20px;
-        }
-
-        .shortcuts h4 {
-            margin-bottom: 10px;
-            color: #495057;
-        }
-
-        .shortcut-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 12px;
         }
 
         .shortcut-key {
@@ -341,108 +325,6 @@
             text-align: center;
             padding: 50px;
             color: #6c757d;
-        }
-
-        .auto-split-section {
-            margin: 20px 0;
-            padding: 20px;
-            border: 2px solid #4CAF50;
-            border-radius: 8px;
-            background-color: #f9f9f9;
-        }
-        
-        .percentage-inputs {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-        
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            min-width: 100px;
-        }
-        
-        .input-group label {
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: #333;
-        }
-        
-        .input-group input {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .auto-split-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .preview-button, .auto-split-button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        
-        .preview-button {
-            background-color: #2196F3;
-            color: white;
-        }
-        
-        .preview-button:hover {
-            background-color: #1976D2;
-        }
-        
-        .auto-split-button {
-            background-color: #4CAF50;
-            color: white;
-        }
-        
-        .auto-split-button:hover {
-            background-color: #45a049;
-        }
-        
-        .auto-split-button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        
-        .split-preview, .split-result {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 5px;
-            background-color: white;
-            border: 1px solid #ddd;
-        }
-        
-        .split-preview {
-            border-left: 4px solid #2196F3;
-        }
-        
-        .split-result {
-            border-left: 4px solid #4CAF50;
-        }
-        
-        .preview-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .stat-item {
-            text-align: center;
-            padding: 10px;
-            background-color: #f5f5f5;
-            border-radius: 4px;
         }
         
         .stat-value {
@@ -469,7 +351,8 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    {% include 'header.html' with context %}
+    <div class="container" style="padding-top:80px;">
         <div class="header">
             <h1>🐕 犬の鼻ラベリング管理ツール</h1>
             <p>犬の顔画像から鼻の有無を判定し、機械学習用データセットを作成します</p>
@@ -494,7 +377,9 @@
                             <!-- canvasは画像と同じサイズ・位置で重ねる -->
                             <canvas id="bboxCanvas" style="position: absolute; left: 0; top: 0; z-index: 2; display: none;"></canvas>
                         </div>
-                        <button id="openOriginalModalBtn" class="nav-button" style="margin-top: 12px; width: 100%;">元画像サイズで編集</button>
+                        <div style="width:100%; display:flex; justify-content:center;">
+                            <button id="openOriginalModalBtn" class="nav-button" style="margin-top: 16px; width: auto; min-width: 160px;">元画像サイズで編集</button>
+                        </div>
                     </div>
         <!-- 元画像サイズ編集モーダル -->
         <div id="originalModal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
@@ -607,44 +492,10 @@
 
                 <button class="save-button" onclick="saveLabel()">💾 ラベルを保存</button>
 
-                <div class="auto-split-section">
-                    <h3>🎯 自動データセット分割</h3>
-                    <div class="auto-split-controls">
-                        <div class="percentage-inputs">
-                            <div class="input-group">
-                                <label for="trainPercent">Train (%)</label>
-                                <input type="number" id="trainPercent" value="80" min="0" max="100" step="0.1">
-                            </div>
-                            <div class="input-group">
-                                <label for="valPercent">Val (%)</label>
-                                <input type="number" id="valPercent" value="10" min="0" max="100" step="0.1">
-                            </div>
-                            <div class="input-group">
-                                <label for="testPercent">Test (%)</label>
-                                <input type="number" id="testPercent" value="10" min="0" max="100" step="0.1">
-                            </div>
-                        </div>
-                        <div class="auto-split-buttons">
-                            <button class="preview-button" onclick="previewAutoSplit()">📊 プレビュー</button>
-                            <button class="auto-split-button" onclick="executeAutoSplit()">🎯 自動分割実行</button>
-                        </div>
-                    </div>
-                    <div id="splitPreview" class="split-preview" style="display: none;"></div>
-                    <div id="splitResult" class="split-result" style="display: none;"></div>
-                </div>
-
                 <div class="export-section">
-                    <h3>データエクスポート</h3>
-                    <div class="export-buttons">
-                        <button class="export-button" onclick="exportData('json')">JSON</button>
-                        <button class="export-button" onclick="exportData('csv')">CSV</button>
-                        <button class="export-button" onclick="exportData('yolo')">YOLO</button>
-                    </div>
-                    <button class="dataset-export" onclick="exportDataset()">📁 データセット出力</button>
                     <div style="margin-top:10px;">
                         <button class="export-button" onclick="exportCurrentImageDataset()">この画像だけデータセットZIP</button>
                     </div>
-                    <a href="/review" class="nav-button" style="display: inline-block; margin-top: 10px; text-decoration: none;">🔍 レビュー画面</a>
                 </div>
 
                 <div class="shortcuts">
@@ -1502,10 +1353,7 @@
             }
         }
 
-        // データエクスポート
-        function exportData(format) {
-            window.open(`/api/export/${format}`, '_blank');
-        }
+
 
         // データセットエクスポート
         function exportDataset() {
