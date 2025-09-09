@@ -149,8 +149,7 @@
         }
 
         .label-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+            display: flex;
             gap: 10px;
             margin-bottom: 15px;
         }
@@ -179,11 +178,15 @@
 
         .label-button.nose {
             border-color: #28a745;
+            width: 100%;
+            font-size: 16px;
+            background: #fff;
         }
 
         .label-button.nose.active {
             background: #28a745;
             border-color: #28a745;
+            color: #fff;
         }
 
 
@@ -434,7 +437,7 @@
 
             <div class="control-panel">
                 <div class="label-section">
-                    <h3>メインラベル</h3>
+                    <h3>クラス</h3>
                     <div class="label-buttons">
                         <button class="label-button nose" onclick="setMainLabel('nose')">
                             🐽 鼻あり (1)
@@ -677,8 +680,13 @@
                 const x = (e.clientX - rect.left) * (originalModalCanvas.width / rect.width);
                 const y = (e.clientY - rect.top) * (originalModalCanvas.height / rect.height);
                 if (originalModalIsDrawing) {
-                    bbox.x_max = x;
-                    bbox.y_max = y;
+                    // 正方形制約: ドラッグ方向に応じて縦横同じ長さにする
+                    const dx = x - bbox.x_min;
+                    const dy = y - bbox.y_min;
+                    const size = Math.max(Math.abs(dx), Math.abs(dy));
+                    // ドラッグ方向を維持
+                    bbox.x_max = dx >= 0 ? bbox.x_min + size : bbox.x_min - size;
+                    bbox.y_max = dy >= 0 ? bbox.y_min + size : bbox.y_min - size;
                     drawOriginalModalBbox();
                 } else if (originalModalIsMoving) {
                     const w = originalModalOriginalBbox.x_max - originalModalOriginalBbox.x_min;
@@ -689,25 +697,43 @@
                     bbox.y_max = bbox.y_min + h;
                     drawOriginalModalBbox();
                 } else if (originalModalIsResizing) {
+                    // 正方形リサイズ
                     let { x_min, y_min, x_max, y_max } = originalModalOriginalBbox;
+                    let new_x_min = x_min, new_y_min = y_min, new_x_max = x_max, new_y_max = y_max;
                     switch (originalModalResizeCorner) {
-                        case 'tl':
-                            bbox.x_min = x;
-                            bbox.y_min = y;
+                        case 'tl': {
+                            // 左上をドラッグ
+                            const side = Math.max(x_max - x, y_max - y);
+                            new_x_min = x_max - side;
+                            new_y_min = y_max - side;
                             break;
-                        case 'tr':
-                            bbox.x_max = x;
-                            bbox.y_min = y;
+                        }
+                        case 'tr': {
+                            // 右上をドラッグ
+                            const side = Math.max(x - x_min, y_max - y);
+                            new_x_max = x_min + side;
+                            new_y_min = y_max - side;
                             break;
-                        case 'bl':
-                            bbox.x_min = x;
-                            bbox.y_max = y;
+                        }
+                        case 'bl': {
+                            // 左下をドラッグ
+                            const side = Math.max(x_max - x, y - y_min);
+                            new_x_min = x_max - side;
+                            new_y_max = y_min + side;
                             break;
-                        case 'br':
-                            bbox.x_max = x;
-                            bbox.y_max = y;
+                        }
+                        case 'br': {
+                            // 右下をドラッグ
+                            const side = Math.max(x - x_min, y - y_min);
+                            new_x_max = x_min + side;
+                            new_y_max = y_min + side;
                             break;
+                        }
                     }
+                    bbox.x_min = new_x_min;
+                    bbox.y_min = new_y_min;
+                    bbox.x_max = new_x_max;
+                    bbox.y_max = new_y_max;
                     drawOriginalModalBbox();
                 }
                 originalModalBbox = bbox;
@@ -883,6 +909,7 @@
                     img.style.width = '100%';
                     img.style.height = 'auto';
                     let showCropped = false;
+                    let showNoNose = false;
                     let bboxObj = null;
                     if (image.main_label === 'nose') {
                         canvas.style.display = 'block';
@@ -912,6 +939,9 @@
                                 0, 0, cropW * scale, cropH * scale
                             );
                         }
+                    } else if (!image.main_label || image.main_label === null || image.main_label === '') {
+                        // 鼻なし画像の場合、no-nose-img.pngを表示
+                        showNoNose = true;
                     } else {
                         canvas.style.display = 'none';
                         window.currentBbox = null;
@@ -925,7 +955,38 @@
                     // canvas上でbbox編集できるようイベントバインド
                     setupBboxCanvasEvents(canvas, img);
                     // くり抜き領域の表示切替
-                    if (cropWrapper) cropWrapper.style.display = showCropped ? 'block' : 'none';
+                    if (cropWrapper) {
+                        if (showCropped) {
+                            cropWrapper.style.display = 'block';
+                            croppedCanvas.style.display = 'block';
+                            // no-nose画像は非表示
+                            let noNoseImg = cropWrapper.querySelector('.no-nose-img');
+                            if (noNoseImg) noNoseImg.style.display = 'none';
+                        } else if (showNoNose) {
+                            cropWrapper.style.display = 'block';
+                            croppedCanvas.style.display = 'none';
+                            let noNoseImg = cropWrapper.querySelector('.no-nose-img');
+                            // appendChild先をcroppedBoxWrapper内の2番目のdiv（canvasの親）に限定
+                            let appendTarget = cropWrapper.querySelector('div > .no-nose-img') ? cropWrapper.querySelector('div') : cropWrapper.querySelector('div');
+                            if (!noNoseImg) {
+                                noNoseImg = document.createElement('img');
+                                noNoseImg.src = '/static/no-nose-img.png';
+                                noNoseImg.alt = '鼻なし画像';
+                                noNoseImg.className = 'no-nose-img';
+                                noNoseImg.style.maxWidth = '100%';
+                                noNoseImg.style.maxHeight = '400px';
+                                noNoseImg.style.borderRadius = '12px';
+                                if (appendTarget) {
+                                    appendTarget.appendChild(noNoseImg);
+                                } else {
+                                    cropWrapper.appendChild(noNoseImg);
+                                }
+                            }
+                            noNoseImg.style.display = 'block';
+                        } else {
+                            cropWrapper.style.display = 'none';
+                        }
+                    }
                 };
             }
         // バウンディングボックス描画関数
@@ -1159,7 +1220,7 @@
                     canvas.style.display = 'none';
                 }
             }
-            // メインラベル変更時にcanvas表示を制御（setMainLabel内で直接呼ぶように変更）
+            // クラス変更時にcanvas表示を制御（setMainLabel内で直接呼ぶように変更）
             // 画像切替時にも反映
             window.loadImage = (function(orig){
                 return function(index) {
@@ -1249,7 +1310,7 @@
 
         // UI状態を更新
         function updateUI() {
-            // メインラベルボタンの状態更新
+            // クラスボタンの状態更新
             document.querySelectorAll('.label-button').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -1277,7 +1338,7 @@
             }
         }
 
-        // メインラベル設定（任意選択可能）
+    // クラス設定（任意選択可能）
         function setMainLabel(label) {
             if (currentMainLabel === label) {
                 currentMainLabel = null;
@@ -1285,7 +1346,7 @@
                 currentMainLabel = label;
             }
             updateUI();
-            // メインラベルが'nose'になったらcanvasを即座に有効化
+            // クラスが'nose'になったらcanvasを即座に有効化
             const wrapper = document.getElementById('imageCanvasWrapper');
             const canvas = wrapper ? wrapper.querySelector('#bboxCanvas') : null;
             const img = wrapper ? wrapper.querySelector('img') : null;
@@ -1420,11 +1481,22 @@
 
         // キーボードショートカット
         document.addEventListener('keydown', function(event) {
+            // 元画像編集モーダルが開いている場合はEnterで保存・閉じる
+            if (originalModal && originalModal.style.display === 'flex') {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    saveOriginalModalBbox();
+                    return;
+                }
+            }
             // 入力フィールドにフォーカスがある場合は無視
             if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
                 return;
             }
-            
+            // 修飾キー（Command, Ctrl, Alt）が押されている場合は無視
+            if (event.metaKey || event.ctrlKey || event.altKey) {
+                return;
+            }
             switch(event.key) {
                 case '1':
                     setMainLabel('nose');
@@ -1554,7 +1626,7 @@
             
             previewDiv.innerHTML = `
                 <h4>📊 分割プレビュー</h4>
-                <p>メインラベル設定済み画像: <strong>${result.total_images}枚</strong></p>
+                <p>クラス設定済み画像: <strong>${result.total_images}枚</strong></p>
                 <div class="preview-stats">
                     <div class="stat-item">
                         <div class="stat-value">${result.train_count}枚</div>
@@ -1600,7 +1672,7 @@
                 test_percent: testPercent,
                 overwrite_existing: true
             };
-            const confirmMessage = `メインラベル設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
+            const confirmMessage = `クラス設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
             
             if (!confirm(confirmMessage)) {
                 return;

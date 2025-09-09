@@ -420,7 +420,7 @@
             <h3>🎯 フィルター条件</h3>
             
             <div class="filter-group">
-                <h4>メインラベル</h4>
+                <h4>クラス</h4>
                 <div class="filter-options" id="mainLabelFilters">
                     <div class="filter-option" data-value="nose">🐽 鼻あり</div>
                 </div>
@@ -516,7 +516,7 @@
                 
                 <div class="modal-labels-section">
                     <div class="modal-label-group">
-                        <h4>メインラベル</h4>
+                        <h4>クラス</h4>
                         <div class="modal-label-options" id="modalMainLabels">
                             <div class="modal-label-option" data-value="nose">🐽 鼻あり</div>
                         </div>
@@ -762,7 +762,7 @@
                 option.classList.remove('active');
             });
             
-            // メインラベルを設定
+            // クラスを設定
             if (modalLabels.mainLabel) {
                 const mainOption = document.querySelector(`#modalMainLabels .modal-label-option[data-value="${modalLabels.mainLabel}"]`);
                 if (mainOption) mainOption.classList.add('active');
@@ -828,7 +828,7 @@
                 const parentId = parent.id;
 
                 if (parentId === 'modalMainLabels') {
-                    // メインラベル（単一選択）
+                    // クラス（単一選択）
                     parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
                     if (modalLabels.mainLabel === value) {
                         modalLabels.mainLabel = null;

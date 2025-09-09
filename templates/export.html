@@ -247,7 +247,7 @@
 			const previewDiv = document.getElementById('splitPreview');
 			previewDiv.innerHTML = `
 				<h4>📊 分割プレビュー</h4>
-				<p>メインラベル設定済み画像: <strong>${result.total_images}枚</strong></p>
+					<p>クラス設定済み画像: <strong>${result.total_images}枚</strong></p>
 				<div class="preview-stats">
 					<div class="stat-item">
 						<div class="stat-value">${result.train_count}枚</div>
@@ -288,7 +288,7 @@
 				test_percent: testPercent,
 				overwrite_existing: true
 			};
-			const confirmMessage = `メインラベル設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
+			const confirmMessage = `クラス設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
 			if (!confirm(confirmMessage)) {
 				return;
 			}
