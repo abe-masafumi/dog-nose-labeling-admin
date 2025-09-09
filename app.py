@@ -421,9 +421,12 @@ def filter_images():
         params.append(dataset_split)
     
     if sub_labels:
+        or_clauses = []
         for sub_label in sub_labels:
-            query += ' AND l.sub_labels LIKE ?'
+            or_clauses.append('l.sub_labels LIKE ?')
             params.append(f'%"{sub_label}"%')
+        if or_clauses:
+            query += ' AND (' + ' OR '.join(or_clauses) + ')'
     
     query += ' ORDER BY i.id'
     
