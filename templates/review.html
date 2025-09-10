@@ -17,10 +17,18 @@
             color: #333;
         }
 
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
+        }
+
+        .main-flex {
+            display: flex;
+            flex-direction: row;
+            gap: 24px;
+            align-items: flex-start;
         }
 
         .header {
@@ -58,12 +66,18 @@
 			opacity: 0.9;
 		}
 
+
         .filter-section {
             background: white;
             padding: 20px;
             border-radius: 10px;
-            margin-bottom: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 280px;
+            min-width: 220px;
+            max-height: 70vh;
+            overflow-y: auto;
+            position: sticky;
+            top: 100px;
         }
 
         .filter-section h3 {
@@ -138,11 +152,14 @@
             background-color: #5a6268;
         }
 
+
         .results-section {
             background: white;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex: 1 1 0%;
+            min-width: 0;
         }
 
         .results-header {
@@ -406,26 +423,70 @@
         .modal-cancel-btn:hover {
             background-color: #5a6268;
         }
+
+        /* --- ページネーション --- */
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 32px 0 0 0;
+            gap: 8px;
+        }
+        .pagination-btn {
+            background: #fff;
+            border: 1.5px solid #bbb;
+            color: #333;
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            font-size: 1.1em;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border 0.2s, box-shadow 0.2s;
+            outline: none;
+            margin: 0 2px;
+            position: relative;
+            z-index: 1;
+        }
+        .pagination-btn:hover:not(:disabled) {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+            box-shadow: 0 4px 16px rgba(0,123,255,0.13);
+        }
+        .pagination-btn.active, .pagination-btn:disabled {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+            font-weight: bold;
+            cursor: default;
+            box-shadow: 0 4px 16px rgba(0,123,255,0.13);
+        }
+        .pagination-btn[aria-label] {
+            border-radius: 18px;
+            width: auto;
+            padding: 0 16px;
+        }
     </style>
 </head>
 <body>
 {% include 'header.html' with context %}
-<div class="container" style="padding-top:80px;">
-            <div class="header">
-                <h1>🔍 レビュー画面</h1>
-                <p>ラベル付けされた画像をフィルターして確認</p>
-            </div>
 
+<div class="container" style="padding-top:80px;">
+    <div class="header">
+        <h1>🔍 レビュー画面</h1>
+        <p>ラベル付けされた画像をフィルターして確認</p>
+    </div>
+    <div class="main-flex">
         <div class="filter-section">
             <h3>🎯 フィルター条件</h3>
-            
             <div class="filter-group">
-                <h4>メインラベル</h4>
+                <h4>クラス</h4>
                 <div class="filter-options" id="mainLabelFilters">
                     <div class="filter-option" data-value="nose">🐽 鼻あり</div>
                 </div>
             </div>
-
             <div class="filter-group">
                 <h4>鼻の向き</h4>
                 <div class="filter-options" id="orientationFilters">
@@ -434,7 +495,6 @@
                     <div class="filter-option" data-value="tilted">斜め</div>
                 </div>
             </div>
-
             <div class="filter-group">
                 <h4>鮮明判定</h4>
                 <div class="filter-options" id="clarityFilters">
@@ -442,7 +502,6 @@
                     <div class="filter-option" data-value="blurred">ぼやけ</div>
                 </div>
             </div>
-
             <div class="filter-group">
                 <h4>鼻の色</h4>
                 <div class="filter-options" id="colorFilters">
@@ -453,7 +512,6 @@
                     <div class="filter-option" data-value="marble">マーブル</div>
                 </div>
             </div>
-
             <div class="filter-group">
                 <h4>鼻の大きさ</h4>
                 <div class="filter-options" id="sizeFilters">
@@ -461,7 +519,6 @@
                     <div class="filter-option" data-value="small">小さい</div>
                 </div>
             </div>
-
             <div class="filter-group">
                 <h4>毛色</h4>
                 <div class="filter-options" id="furFilters">
@@ -469,7 +526,6 @@
                     <div class="filter-option" data-value="dark_fur">暗い毛色</div>
                 </div>
             </div>
-
             <div class="filter-group">
                 <h4>データセット分割</h4>
                 <div class="filter-options" id="datasetFilters">
@@ -478,13 +534,11 @@
                     <div class="filter-option" data-value="test">Test</div>
                 </div>
             </div>
-
             <div class="filter-controls">
                 <button class="search-button" onclick="searchImages()">🔍 検索</button>
                 <button class="clear-button" onclick="clearFilters()">🗑️ フィルタークリア</button>
             </div>
         </div>
-
         <div class="results-section">
             <div class="results-header">
                 <h3>📋 検索結果</h3>
@@ -495,6 +549,7 @@
             </div>
         </div>
     </div>
+</div>
 
     <!-- 先頭に戻るボタン -->
     <button id="backToTopButton" class="back-to-top" onclick="scrollToTop()" style="display: none;">
@@ -516,7 +571,7 @@
                 
                 <div class="modal-labels-section">
                     <div class="modal-label-group">
-                        <h4>メインラベル</h4>
+                        <h4>クラス</h4>
                         <div class="modal-label-options" id="modalMainLabels">
                             <div class="modal-label-option" data-value="nose">🐽 鼻あり</div>
                         </div>
@@ -598,6 +653,11 @@
             datasetSplit: null
         };
 
+        // ページネーション用グローバル変数
+        let currentPage = 1;
+        let lastResults = [];
+        const PAGE_SIZE = 50;
+
         document.addEventListener('click', function(event) {
             if (event.target.classList.contains('filter-option')) {
                 const option = event.target;
@@ -627,7 +687,7 @@
                     if (index > -1) {
                         selectedFilters.subLabels.splice(index, 1);
                     } else {
-                        selectedFilters.subLabels.push(value);
+                        selectedFilters.push(value);
                     }
                 }
             }
@@ -667,26 +727,32 @@
             }
         }
 
-        function displayResults(results) {
+        // ページネーション用displayResults関数
+        function displayResults(results, page = 1) {
             const resultsContainer = document.getElementById('resultsContainer');
-            
+            lastResults = results;
+            currentPage = page;
             if (results.length === 0) {
                 resultsContainer.innerHTML = '<div class="no-results"><h3>結果が見つかりません</h3><p>フィルター条件を変更して再度検索してください。</p></div>';
+                document.getElementById('paginationContainer')?.remove();
                 return;
             }
-            
+            // ページ分割
+            const totalPages = Math.ceil(results.length / PAGE_SIZE);
+            const startIdx = (page - 1) * PAGE_SIZE;
+            const endIdx = Math.min(startIdx + PAGE_SIZE, results.length);
+            const pageResults = results.slice(startIdx, endIdx);
+
             const grid = document.createElement('div');
             grid.className = 'results-grid';
-            
-            results.forEach(result => {
+
+            pageResults.forEach(result => {
                 const item = document.createElement('div');
                 item.className = 'result-item clickable';
                 item.style.cursor = 'pointer';
-                
                 const subLabelsHtml = result.sub_labels.map(label => 
                     `<span class="label-tag">${label}</span>`
                 ).join('');
-                
                 item.innerHTML = `
                     <img src="/images/${result.filename}" alt="${result.filename}" class="result-image" onerror="this.style.display='none'">
                     <div class="result-info">
@@ -698,16 +764,49 @@
                         </div>
                     </div>
                 `;
-                
                 item.addEventListener('click', () => {
                     openEditModal(result);
                 });
-                
                 grid.appendChild(item);
             });
-            
             resultsContainer.innerHTML = '';
             resultsContainer.appendChild(grid);
+
+            // ページネーションUI
+            document.getElementById('paginationContainer')?.remove();
+            if (results.length > PAGE_SIZE) {
+                const pagination = document.createElement('div');
+                pagination.id = 'paginationContainer';
+                pagination.className = 'pagination-container';
+                // 前へ
+                const prevBtn = document.createElement('button');
+                prevBtn.textContent = '←';
+                prevBtn.className = 'pagination-btn';
+                prevBtn.setAttribute('aria-label', '前へ');
+                prevBtn.disabled = page === 1;
+                prevBtn.onclick = () => displayResults(results, page - 1);
+                pagination.appendChild(prevBtn);
+                // ページ番号
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.textContent = i;
+                    pageBtn.className = 'pagination-btn' + (i === page ? ' active' : '');
+                    if (i === page) {
+                        pageBtn.disabled = true;
+                    }
+                    pageBtn.onclick = () => displayResults(results, i);
+                    pagination.appendChild(pageBtn);
+                }
+                // 次へ
+                const nextBtn = document.createElement('button');
+                nextBtn.textContent = '→';
+                nextBtn.className = 'pagination-btn';
+                nextBtn.setAttribute('aria-label', '次へ');
+                nextBtn.disabled = page === totalPages;
+                nextBtn.onclick = () => displayResults(results, page + 1);
+                pagination.appendChild(nextBtn);
+                resultsContainer.parentNode.appendChild(pagination);
+            }
         }
 
         function clearFilters() {
@@ -762,7 +861,7 @@
                 option.classList.remove('active');
             });
             
-            // メインラベルを設定
+            // クラスを設定
             if (modalLabels.mainLabel) {
                 const mainOption = document.querySelector(`#modalMainLabels .modal-label-option[data-value="${modalLabels.mainLabel}"]`);
                 if (mainOption) mainOption.classList.add('active');
@@ -828,7 +927,7 @@
                 const parentId = parent.id;
 
                 if (parentId === 'modalMainLabels') {
-                    // メインラベル（単一選択）
+                    // クラス（単一選択）
                     parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
                     if (modalLabels.mainLabel === value) {
                         modalLabels.mainLabel = null;

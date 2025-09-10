@@ -15,7 +15,7 @@ def detect_nose_for_all_images(model_path='models/8_30_best.pt'):
     cursor.execute('''
         SELECT i.filepath, i.id FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
-        WHERE l.is_manual IS NULL OR l.is_manual = 0
+        WHERE l.is_manual IS NULL
     ''')
     rows = cursor.fetchall()
     if not rows:
@@ -45,16 +45,16 @@ def detect_nose_for_all_images(model_path='models/8_30_best.pt'):
         cursor.execute('SELECT COUNT(*) FROM labels WHERE image_path = ?', (filepath,))
         exists = cursor.fetchone()[0] > 0
         if exists:
-            # bbox, is_completed, is_manual, updated_atのみ更新
+            # bbox, main_label, is_manual, updated_atのみ更新（is_completedは自動で変更しない）
             cursor.execute('''
-                UPDATE labels SET bbox = ?, is_completed = 1, is_manual = 0, updated_at = CURRENT_TIMESTAMP
+                UPDATE labels SET bbox = ?, main_label = ?, is_manual = 'auto', updated_at = CURRENT_TIMESTAMP
                 WHERE image_path = ?
-            ''', (json.dumps(bbox), filepath))
+            ''', (json.dumps(bbox), 'nose', filepath))
         else:
-            # 新規レコード挿入
+            # 新規レコード挿入（is_completedはNULL/未設定で挿入）
             cursor.execute('''
-                INSERT INTO labels (image_path, main_label, sub_labels, dataset_split, bbox, is_completed, is_manual, updated_at)
-                VALUES (?, ?, ?, ?, ?, 1, 0, CURRENT_TIMESTAMP)
+                INSERT INTO labels (image_path, main_label, sub_labels, dataset_split, bbox, is_manual, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'auto', CURRENT_TIMESTAMP)
             ''', (filepath, 'nose', '[]', None, json.dumps(bbox)))
         print(f'Detected and saved: {filepath}')
     conn.commit()
@@ -230,7 +230,7 @@ def get_images():
             'dataset_split': row[5],
             'bbox': row[6],
             'is_completed': row[7],
-            'is_manual': row[8]
+            'is_manual': row[8] if row[8] is not None else None
         })
     conn.close()
     return jsonify(images)
@@ -257,7 +257,7 @@ def get_image(image_id):
             'sub_labels': row[4],
             'dataset_split': row[5],
             'bbox': row[6],
-            'is_manual': row[7]
+            'is_manual': row[7] if row[7] is not None else None
         }
         conn.close()
         return jsonify(image_data)
@@ -280,14 +280,14 @@ def save_label():
     # 既存レコードがあればUPDATE、なければINSERT
     cursor.execute('''
         INSERT INTO labels (image_path, main_label, sub_labels, dataset_split, bbox, is_completed, is_manual, updated_at)
-        VALUES (?, ?, ?, ?, ?, 1, 1, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, 1, 'manual', CURRENT_TIMESTAMP)
         ON CONFLICT(image_path) DO UPDATE SET
             main_label=excluded.main_label,
             sub_labels=excluded.sub_labels,
             dataset_split=excluded.dataset_split,
             bbox=excluded.bbox,
             is_completed=1,
-            is_manual=1,
+            is_manual='manual',
             updated_at=CURRENT_TIMESTAMP
     ''', (image_path, main_label, sub_labels, dataset_split, bbox))
     conn.commit()
@@ -408,7 +408,7 @@ def filter_images():
                l.main_label, l.sub_labels, l.dataset_split
         FROM images i
         LEFT JOIN labels l ON i.filepath = l.image_path
-        WHERE 1=1
+        WHERE l.is_completed = 1
     '''
     params = []
     
@@ -421,9 +421,12 @@ def filter_images():
         params.append(dataset_split)
     
     if sub_labels:
+        or_clauses = []
         for sub_label in sub_labels:
-            query += ' AND l.sub_labels LIKE ?'
+            or_clauses.append('l.sub_labels LIKE ?')
             params.append(f'%"{sub_label}"%')
+        if or_clauses:
+            query += ' AND (' + ' OR '.join(or_clauses) + ')'
     
     query += ' ORDER BY i.id'
     

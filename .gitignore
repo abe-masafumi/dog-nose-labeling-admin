@@ -134,6 +134,7 @@ images/
 *.sqlite
 *.sqlite3
 labels.db
+labels.db*
 
 # エクスポートファイル
 labels_export_*.json

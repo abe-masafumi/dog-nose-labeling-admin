@@ -149,8 +149,7 @@
         }
 
         .label-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+            display: flex;
             gap: 10px;
             margin-bottom: 15px;
         }
@@ -179,11 +178,15 @@
 
         .label-button.nose {
             border-color: #28a745;
+            width: 100%;
+            font-size: 16px;
+            background: #fff;
         }
 
         .label-button.nose.active {
             background: #28a745;
             border-color: #28a745;
+            color: #fff;
         }
 
 
@@ -377,7 +380,7 @@
                             <!-- canvasは画像と同じサイズ・位置で重ねる -->
                             <canvas id="bboxCanvas" style="position: absolute; left: 0; top: 0; z-index: 2; display: none;"></canvas>
                         </div>
-                        <div style="width:100%; display:flex; justify-content:center;">
+                        <div id="openOriginalModalBtnWrapper" style="width:100%; display:flex; justify-content:center;">
                             <button id="openOriginalModalBtn" class="nav-button" style="margin-top: 16px; width: auto; min-width: 160px;">元画像サイズで編集</button>
                         </div>
                     </div>
@@ -394,10 +397,10 @@
             </div>
         </div>
                     <div style="flex:1; display:flex; justify-content:center; align-items:center; min-width:0;">
-                        <div id="croppedBoxWrapper" style="min-width:120px; max-width:400px; display:none; text-align:center; align-self:center; width:100%;">
+                        <div id="croppedBoxWrapper" style="min-width:100px; max-width:100vw; display:none; text-align:center; align-self:center; width:100%;">
                             <div style="font-size:13px;color:#888;margin-bottom:4px;">鼻領域プレビュー</div>
                             <div style="display:flex;justify-content:center;align-items:center;">
-                                <canvas id="croppedBoxCanvas" style="border:2px solid #aaa; border-radius:12px; background:#fff; max-width:100%; max-height:400px; display:block;"></canvas>
+                                <canvas id="croppedBoxCanvas" style="border:2px solid #aaa; border-radius:12px; background:#fff; width:100%; height:auto; aspect-ratio:1/1; max-width:400px; max-height:400px; display:block;"></canvas>
                             </div>
                         </div>
                     </div>
@@ -410,8 +413,8 @@
                         <span id="fileName">-</span>
                     </div>
                     <div class="info-item">
-                        <span>パス:</span>
-                        <span id="filePath">-</span>
+                        <span style="display:none;">パス:</span>
+                        <span id="filePath" style="display:none;">-</span>
                     </div>
                     <div class="info-item">
                         <span>現在のラベル:</span>
@@ -422,19 +425,19 @@
                         <span id="bboxInfo">-</span>
                     </div>
                     <div class="info-item">
-                        <span>作業済み:</span>
-                        <span id="isCompletedInfo">-</span>
+                        <span>BBox修正状況:</span>
+                        <span id="isManualInfo">-</span>
                     </div>
                     <div class="info-item">
-                        <span>手動修正:</span>
-                        <span id="isManualInfo">-</span>
+                        <span>作業状況:</span>
+                        <span id="isCompletedInfo">-</span>
                     </div>
                 </div>
             </div>
 
             <div class="control-panel">
                 <div class="label-section">
-                    <h3>メインラベル</h3>
+                    <h3>クラス</h3>
                     <div class="label-buttons">
                         <button class="label-button nose" onclick="setMainLabel('nose')">
                             🐽 鼻あり (1)
@@ -677,8 +680,13 @@
                 const x = (e.clientX - rect.left) * (originalModalCanvas.width / rect.width);
                 const y = (e.clientY - rect.top) * (originalModalCanvas.height / rect.height);
                 if (originalModalIsDrawing) {
-                    bbox.x_max = x;
-                    bbox.y_max = y;
+                    // 正方形制約: ドラッグ方向に応じて縦横同じ長さにする
+                    const dx = x - bbox.x_min;
+                    const dy = y - bbox.y_min;
+                    const size = Math.max(Math.abs(dx), Math.abs(dy));
+                    // ドラッグ方向を維持
+                    bbox.x_max = dx >= 0 ? bbox.x_min + size : bbox.x_min - size;
+                    bbox.y_max = dy >= 0 ? bbox.y_min + size : bbox.y_min - size;
                     drawOriginalModalBbox();
                 } else if (originalModalIsMoving) {
                     const w = originalModalOriginalBbox.x_max - originalModalOriginalBbox.x_min;
@@ -689,25 +697,43 @@
                     bbox.y_max = bbox.y_min + h;
                     drawOriginalModalBbox();
                 } else if (originalModalIsResizing) {
+                    // 正方形リサイズ
                     let { x_min, y_min, x_max, y_max } = originalModalOriginalBbox;
+                    let new_x_min = x_min, new_y_min = y_min, new_x_max = x_max, new_y_max = y_max;
                     switch (originalModalResizeCorner) {
-                        case 'tl':
-                            bbox.x_min = x;
-                            bbox.y_min = y;
+                        case 'tl': {
+                            // 左上をドラッグ
+                            const side = Math.max(x_max - x, y_max - y);
+                            new_x_min = x_max - side;
+                            new_y_min = y_max - side;
                             break;
-                        case 'tr':
-                            bbox.x_max = x;
-                            bbox.y_min = y;
+                        }
+                        case 'tr': {
+                            // 右上をドラッグ
+                            const side = Math.max(x - x_min, y_max - y);
+                            new_x_max = x_min + side;
+                            new_y_min = y_max - side;
                             break;
-                        case 'bl':
-                            bbox.x_min = x;
-                            bbox.y_max = y;
+                        }
+                        case 'bl': {
+                            // 左下をドラッグ
+                            const side = Math.max(x_max - x, y - y_min);
+                            new_x_min = x_max - side;
+                            new_y_max = y_min + side;
                             break;
-                        case 'br':
-                            bbox.x_max = x;
-                            bbox.y_max = y;
+                        }
+                        case 'br': {
+                            // 右下をドラッグ
+                            const side = Math.max(x - x_min, y - y_min);
+                            new_x_max = x_min + side;
+                            new_y_max = y_min + side;
                             break;
+                        }
                     }
+                    bbox.x_min = new_x_min;
+                    bbox.y_min = new_y_min;
+                    bbox.x_max = new_x_max;
+                    bbox.y_max = new_y_max;
                     drawOriginalModalBbox();
                 }
                 originalModalBbox = bbox;
@@ -791,6 +817,9 @@
                 drawBboxOnCanvas(originalModalBbox, document.getElementById('bboxCanvas'));
             }
             closeOriginalModal();
+            // フォーカスを外すことでEnter連打で再度開くのを防ぐ
+            var btn = document.getElementById('openOriginalModalBtn');
+            if (btn) btn.blur();
         }
 
         window.addEventListener('DOMContentLoaded', function() {
@@ -804,7 +833,20 @@
             };
             document.getElementById('closeOriginalModalBtn').onclick = closeOriginalModal;
             document.getElementById('saveOriginalModalBtn').onclick = saveOriginalModalBbox;
+            updateOriginalModalBtnVisibility();
         });
+
+        // 「元画像サイズで編集」ボタンの表示制御
+        function updateOriginalModalBtnVisibility() {
+            var btnWrapper = document.getElementById('openOriginalModalBtnWrapper');
+            if (!btnWrapper) return;
+            if (currentMainLabel === 'nose') {
+                btnWrapper.style.display = 'flex';
+            } else {
+                btnWrapper.style.display = 'none';
+            }
+        }
+
         let images = [];
         let currentImageIndex = 0;
         let currentMainLabel = null;
@@ -816,25 +858,19 @@
             try {
                 const response = await fetch('/api/images');
                 images = await response.json();
-                
                 if (images.length === 0) {
                     document.getElementById('imageContainer').innerHTML = 
                         '<div class="no-images">imagesフォルダに画像ファイルを配置してください</div>';
                     return;
                 }
-                
                 document.getElementById('totalImages').textContent = images.length;
-                
                 // URLパラメータから画像IDを取得
                 const urlParams = new URLSearchParams(window.location.search);
                 const imageId = urlParams.get('imageId');
-                
                 if (imageId) {
-                    // 指定された画像IDに対応するインデックスを検索
                     const targetIndex = images.findIndex(img => img.id == imageId);
                     if (targetIndex !== -1) {
                         loadImage(targetIndex);
-                        // URLパラメータをクリア（履歴を汚さないため）
                         window.history.replaceState({}, document.title, window.location.pathname);
                     } else {
                         loadImage(0);
@@ -842,6 +878,8 @@
                 } else {
                     loadImage(0);
                 }
+                // 初期画像ロード後にボタン表示状態を必ず同期
+                updateOriginalModalBtnVisibility();
             } catch (error) {
                 console.error('画像の読み込みに失敗しました:', error);
                 document.getElementById('imageContainer').innerHTML = 
@@ -854,6 +892,7 @@
             if (index < 0 || index >= images.length) return;
             currentImageIndex = index;
             const image = images[index];
+            updateOriginalModalBtnVisibility();
             // 画像とcanvasをラッパー内に挿入
             const wrapper = document.getElementById('imageCanvasWrapper');
             const cropWrapper = document.getElementById('croppedBoxWrapper');
@@ -883,6 +922,7 @@
                     img.style.width = '100%';
                     img.style.height = 'auto';
                     let showCropped = false;
+                    let showNoNose = false;
                     let bboxObj = null;
                     if (image.main_label === 'nose') {
                         canvas.style.display = 'block';
@@ -896,22 +936,36 @@
                             // 元画像のnaturalサイズ基準で切り抜き、2倍拡大表示
                             const cropW = bboxObj.x_max - bboxObj.x_min;
                             const cropH = bboxObj.y_max - bboxObj.y_min;
-                            const scale = 2.0;
-                            croppedCanvas.width = cropW * scale;
-                            croppedCanvas.height = cropH * scale;
-                            croppedCanvas.style.width = (cropW * scale) + 'px';
-                            croppedCanvas.style.height = (cropH * scale) + 'px';
+                            // 親要素の幅を取得し、最大400pxかつ親幅-32px以内でアスペクト比維持
+                            const parent = croppedCanvas.parentElement;
+                            let parentW = parent ? parent.offsetWidth : 400;
+                            let maxW = Math.min(400, parentW - 32);
+                            let aspect = cropW / cropH;
+                            let previewW = maxW;
+                            let previewH = Math.round(maxW / aspect);
+                            if (previewH > 400) {
+                                previewH = 400;
+                                previewW = Math.round(400 * aspect);
+                            }
+                            croppedCanvas.width = Math.round(cropW);
+                            croppedCanvas.height = Math.round(cropH);
+                            croppedCanvas.style.width = previewW + 'px';
+                            croppedCanvas.style.height = previewH + 'px';
+                            croppedCanvas.style.aspectRatio = aspect;
                             const ctx = croppedCanvas.getContext('2d');
-                            ctx.clearRect(0, 0, cropW * scale, cropH * scale);
+                            ctx.clearRect(0, 0, croppedCanvas.width, croppedCanvas.height);
                             ctx.drawImage(
                                 img,
                                 bboxObj.x_min,
                                 bboxObj.y_min,
                                 cropW,
                                 cropH,
-                                0, 0, cropW * scale, cropH * scale
+                                0, 0, croppedCanvas.width, croppedCanvas.height
                             );
                         }
+                    } else if (!image.main_label || image.main_label === null || image.main_label === '') {
+                        // 鼻なし画像の場合、no-nose-img.pngを表示
+                        showNoNose = true;
                     } else {
                         canvas.style.display = 'none';
                         window.currentBbox = null;
@@ -925,7 +979,38 @@
                     // canvas上でbbox編集できるようイベントバインド
                     setupBboxCanvasEvents(canvas, img);
                     // くり抜き領域の表示切替
-                    if (cropWrapper) cropWrapper.style.display = showCropped ? 'block' : 'none';
+                    if (cropWrapper) {
+                        if (showCropped) {
+                            cropWrapper.style.display = 'block';
+                            croppedCanvas.style.display = 'block';
+                            // no-nose画像は非表示
+                            let noNoseImg = cropWrapper.querySelector('.no-nose-img');
+                            if (noNoseImg) noNoseImg.style.display = 'none';
+                        } else if (showNoNose) {
+                            cropWrapper.style.display = 'block';
+                            croppedCanvas.style.display = 'none';
+                            let noNoseImg = cropWrapper.querySelector('.no-nose-img');
+                            // appendChild先をcroppedBoxWrapper内の2番目のdiv（canvasの親）に限定
+                            let appendTarget = cropWrapper.querySelector('div > .no-nose-img') ? cropWrapper.querySelector('div') : cropWrapper.querySelector('div');
+                            if (!noNoseImg) {
+                                noNoseImg = document.createElement('img');
+                                noNoseImg.src = '/static/no-nose-img.png';
+                                noNoseImg.alt = '鼻なし画像';
+                                noNoseImg.className = 'no-nose-img';
+                                noNoseImg.style.maxWidth = '100%';
+                                noNoseImg.style.maxHeight = '400px';
+                                noNoseImg.style.borderRadius = '12px';
+                                if (appendTarget) {
+                                    appendTarget.appendChild(noNoseImg);
+                                } else {
+                                    cropWrapper.appendChild(noNoseImg);
+                                }
+                            }
+                            noNoseImg.style.display = 'block';
+                        } else {
+                            cropWrapper.style.display = 'none';
+                        }
+                    }
                 };
             }
         // バウンディングボックス描画関数
@@ -1159,13 +1244,7 @@
                     canvas.style.display = 'none';
                 }
             }
-            // メインラベル変更時にcanvas表示を制御
-            window.setMainLabel = (function(orig){
-                return function(label) {
-                    orig(label);
-                    updateCanvasVisibility();
-                }
-            })(window.setMainLabel);
+            // クラス変更時にcanvas表示を制御（setMainLabel内で直接呼ぶように変更）
             // 画像切替時にも反映
             window.loadImage = (function(orig){
                 return function(index) {
@@ -1185,16 +1264,58 @@
             // bbox情報表示
             let bboxObj = image.bbox ? (typeof image.bbox === 'string' ? JSON.parse(image.bbox) : image.bbox) : null;
             if (bboxObj && bboxObj.x_min != null) {
-                document.getElementById('bboxInfo').textContent = `x_min: ${bboxObj.x_min}, y_min: ${bboxObj.y_min}, x_max: ${bboxObj.x_max}, y_max: ${bboxObj.y_max}`;
+                // 小数点1桁で省略し、x1,y1,x2,y2形式で表示
+                const x1 = Math.round(bboxObj.x_min * 10) / 10;
+                const y1 = Math.round(bboxObj.y_min * 10) / 10;
+                const x2 = Math.round(bboxObj.x_max * 10) / 10;
+                const y2 = Math.round(bboxObj.y_max * 10) / 10;
+                document.getElementById('bboxInfo').textContent = `(${x1}, ${y1}, ${x2}, ${y2})`;
             } else {
                 document.getElementById('bboxInfo').textContent = '-';
             }
-            // is_completed情報表示
-            let isCompleted = (image.is_completed === 1 || image.is_completed === true || image.is_completed === '1') ? '✔️' : '✗';
-            document.getElementById('isCompletedInfo').textContent = isCompleted;
-            // is_manual情報表示
-            let isManual = (image.is_manual === 1 || image.is_manual === true || image.is_manual === '1') ? '✔️' : '✗';
-            document.getElementById('isManualInfo').textContent = isManual;
+            // 作業状況表示（要件に応じて判定）
+            let isCompletedText = '未作業';
+            const isCompleted = (image.is_completed === 1 || image.is_completed === true || image.is_completed === '1');
+            const mainLabel = image.main_label;
+            let subLabels = [];
+            try {
+                subLabels = image.sub_labels ? (typeof image.sub_labels === 'string' ? JSON.parse(image.sub_labels) : image.sub_labels) : [];
+            } catch(e) { subLabels = []; }
+            // サブラベルカテゴリごとに最低1つずつ選択されているか
+            const requiredCategories = [
+                ['front','side','tilted'], // 鼻の向き
+                ['clear','blurred'],       // 鮮明判定
+                ['black','brown','gray','pink','marble'], // 鼻の色
+                ['large','small'],         // 鼻の大きさ
+                ['light_fur','dark_fur']   // 毛色
+            ];
+            function allCategoriesSelected(subLabels) {
+                return requiredCategories.every(cat => cat.some(l => subLabels.includes(l)));
+            }
+            if (
+                (!isCompleted && (mainLabel !== 'nose' || !allCategoriesSelected(subLabels)))
+            ) {
+                isCompletedText = '未作業';
+            } else if (
+                isCompleted && (
+                    (!mainLabel) || (mainLabel === 'nose' && allCategoriesSelected(subLabels))
+                )
+            ) {
+                isCompletedText = '作業済み';
+            } else {
+                isCompletedText = '未作業';
+            }
+            document.getElementById('isCompletedInfo').textContent = isCompletedText;
+            // BBox修正状況表示
+            let isManualText = '-';
+            if (image.is_manual === 'manual' || image.is_manual === 1 || image.is_manual === true) {
+                isManualText = '手動';
+            } else if (image.is_manual === 'auto') {
+                isManualText = '自動';
+            } else if (image.is_manual === null || image.is_manual === undefined) {
+                isManualText = '未設定';
+            }
+            document.getElementById('isManualInfo').textContent = isManualText;
             
             // インデックス更新
             document.getElementById('currentIndex').textContent = index + 1;
@@ -1213,7 +1334,7 @@
 
         // UI状態を更新
         function updateUI() {
-            // メインラベルボタンの状態更新
+            // クラスボタンの状態更新
             document.querySelectorAll('.label-button').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -1241,7 +1362,7 @@
             }
         }
 
-        // メインラベル設定（任意選択可能）
+    // クラス設定（任意選択可能）
         function setMainLabel(label) {
             if (currentMainLabel === label) {
                 currentMainLabel = null;
@@ -1249,6 +1370,23 @@
                 currentMainLabel = label;
             }
             updateUI();
+            updateOriginalModalBtnVisibility();
+            // クラスが'nose'になったらcanvasを即座に有効化
+            const wrapper = document.getElementById('imageCanvasWrapper');
+            const canvas = wrapper ? wrapper.querySelector('#bboxCanvas') : null;
+            const img = wrapper ? wrapper.querySelector('img') : null;
+            if (canvas && img) {
+                if (currentMainLabel === 'nose') {
+                    canvas.style.display = 'block';
+                    // bboxが未設定なら新規作成モードにする
+                    if (!images[currentImageIndex].bbox) {
+                        window.currentBbox = null;
+                    }
+                    setupBboxCanvasEvents(canvas, img);
+                } else {
+                    canvas.style.display = 'none';
+                }
+            }
         }
 
         // サブラベル切り替え（カテゴリ内単一選択・クリア可能）
@@ -1325,14 +1463,13 @@
                 });
                 
                 if (response.ok) {
-                    // 画像データを更新
-                    images[currentImageIndex].main_label = currentMainLabel;
-                    images[currentImageIndex].sub_labels = JSON.stringify(currentSubLabels);
-                    images[currentImageIndex].dataset_split = currentDatasetSplit;
-                    images[currentImageIndex].is_completed = 1;
-                    // 現在のラベル表示を更新
-                    document.getElementById('currentLabel').textContent = currentMainLabel;
-                    document.getElementById('isCompletedInfo').textContent = '✔️';
+                    // 最新データを取得して反映
+                    const imageId = images[currentImageIndex].id;
+                    const res2 = await fetch(`/api/images/${imageId}`);
+                    if (res2.ok) {
+                        const updated = await res2.json();
+                        images[currentImageIndex] = updated;
+                    }
                     // 次の画像に移動
                     if (currentImageIndex < images.length - 1) {
                         nextImage();
@@ -1369,11 +1506,22 @@
 
         // キーボードショートカット
         document.addEventListener('keydown', function(event) {
+            // 元画像編集モーダルが開いている場合はEnterで保存・閉じる
+            if (originalModal && originalModal.style.display === 'flex') {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    saveOriginalModalBbox();
+                    return;
+                }
+            }
             // 入力フィールドにフォーカスがある場合は無視
             if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
                 return;
             }
-            
+            // 修飾キー（Command, Ctrl, Alt）が押されている場合は無視
+            if (event.metaKey || event.ctrlKey || event.altKey) {
+                return;
+            }
             switch(event.key) {
                 case '1':
                     setMainLabel('nose');
@@ -1503,7 +1651,7 @@
             
             previewDiv.innerHTML = `
                 <h4>📊 分割プレビュー</h4>
-                <p>メインラベル設定済み画像: <strong>${result.total_images}枚</strong></p>
+                <p>クラス設定済み画像: <strong>${result.total_images}枚</strong></p>
                 <div class="preview-stats">
                     <div class="stat-item">
                         <div class="stat-value">${result.train_count}枚</div>
@@ -1549,7 +1697,7 @@
                 test_percent: testPercent,
                 overwrite_existing: true
             };
-            const confirmMessage = `メインラベル設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
+            const confirmMessage = `クラス設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
             
             if (!confirm(confirmMessage)) {
                 return;
