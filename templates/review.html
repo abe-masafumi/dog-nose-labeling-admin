@@ -468,6 +468,37 @@
             width: auto;
             padding: 0 16px;
         }
+        .result-filename {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+            word-break: break-all; /* 長いファイル名を折り返す */
+            cursor: pointer;       /* コピー可能を示す */
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            line-height: 1.3;
+        }
+        .result-filename.copied::after {
+            content: "コピーしました";
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #667eea;
+            color: #fff;
+            font-size: 0.8em;
+            padding: 2px 8px;
+            border-radius: 8px;
+            margin-top: 2px;
+            white-space: nowrap;
+            z-index: 10;
+            animation: fadeout 1.2s forwards;
+        }
+        @keyframes fadeout {
+            0% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -658,6 +689,37 @@
         let lastResults = [];
         const PAGE_SIZE = 50;
 
+        const LABEL_JA_MAP = {
+            // メインラベル
+            nose: "鼻あり",
+            // 鼻の向き
+            front: "正面",
+            side: "横向き",
+            tilted: "斜め",
+            // 鮮明判定
+            clear: "鮮明",
+            blurred: "ぼやけ",
+            // 鼻の色
+            black: "黒",
+            brown: "茶色",
+            gray: "灰色",
+            pink: "ピンク",
+            marble: "マーブル",
+            // 鼻の大きさ
+            large: "大きい",
+            small: "小さい",
+            // 毛色
+            light_fur: "明るい毛色",
+            dark_fur: "暗い毛色",
+            // 鼻の長さ
+            nose_long: "鼻が長い",
+            nose_short: "鼻が短い",
+            // データセット分割
+            train: "Train",
+            val: "Val",
+            test: "Test"
+        };
+
         document.addEventListener('click', function(event) {
             if (event.target.classList.contains('filter-option')) {
                 const option = event.target;
@@ -682,12 +744,13 @@
                         selectedFilters.datasetSplit = value;
                     }
                 } else {
+                    // サブラベルはカテゴリ問わず複数選択可
                     option.classList.toggle('active');
                     const index = selectedFilters.subLabels.indexOf(value);
                     if (index > -1) {
                         selectedFilters.subLabels.splice(index, 1);
                     } else {
-                        selectedFilters.push(value);
+                        selectedFilters.subLabels.push(value);
                     }
                 }
             }
@@ -709,14 +772,44 @@
                 if (selectedFilters.datasetSplit) {
                     params.append('dataset_split', selectedFilters.datasetSplit);
                 }
-                
-                selectedFilters.subLabels.forEach(subLabel => {
-                    params.append('sub_labels', subLabel);
-                });
-                
+
+                // サーバーからは「とりあえず候補全部」取得
                 const response = await fetch(`/api/filter?${params.toString()}`);
-                const results = await response.json();
-                
+                let results = await response.json();
+
+                // --- ここでクライアント側フィルタリングを適用 ---
+                results = results.filter(result => {
+                    // メインラベル
+                    if (selectedFilters.mainLabel && result.main_label !== selectedFilters.mainLabel) {
+                        return false;
+                    }
+
+                    // データセット
+                    if (selectedFilters.datasetSplit && result.dataset_split !== selectedFilters.datasetSplit) {
+                        return false;
+                    }
+
+                    // サブラベルごとの判定
+                    const subChecks = {
+                        orientation: ['front','side','tilted'],
+                        clarity: ['clear','blurred'],
+                        color: ['black','brown','gray','pink','marble'],
+                        size: ['large','small'],
+                        fur: ['light_fur','dark_fur']
+                    };
+
+                    for (const [category, values] of Object.entries(subChecks)) {
+                        const selectedInCategory = selectedFilters.subLabels.filter(v => values.includes(v));
+                        if (selectedInCategory.length > 0) {
+                            // 選択されたら、そのどれかを必ず含む必要あり
+                            if (!result.sub_labels.some(l => selectedInCategory.includes(l))) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                });
+
                 displayResults(results);
                 resultsCount.textContent = `${results.length}件の結果`;
                 
@@ -727,7 +820,13 @@
             }
         }
 
-        // ページネーション用displayResults関数
+
+        // ラベルを日本語に変換する関数
+        function toJapaneseLabel(label) {
+            return LABEL_JA_MAP[label] || label;
+        }
+
+        // displayResults関数のラベル表示部分を修正
         function displayResults(results, page = 1) {
             const resultsContainer = document.getElementById('resultsContainer');
             lastResults = results;
@@ -737,7 +836,6 @@
                 document.getElementById('paginationContainer')?.remove();
                 return;
             }
-            // ページ分割
             const totalPages = Math.ceil(results.length / PAGE_SIZE);
             const startIdx = (page - 1) * PAGE_SIZE;
             const endIdx = Math.min(startIdx + PAGE_SIZE, results.length);
@@ -751,19 +849,29 @@
                 item.className = 'result-item clickable';
                 item.style.cursor = 'pointer';
                 const subLabelsHtml = result.sub_labels.map(label => 
-                    `<span class="label-tag">${label}</span>`
+                    `<span class="label-tag">${toJapaneseLabel(label)}</span>`
                 ).join('');
                 item.innerHTML = `
                     <img src="/images/${result.filename}" alt="${result.filename}" class="result-image" onerror="this.style.display='none'">
                     <div class="result-info">
-                        <div class="result-filename">${result.filename}</div>
+                        <div class="result-filename" title="クリックでコピー">${result.filename}</div>
                         <div class="result-labels">
-                            ${result.main_label ? `<span class="label-tag main">${result.main_label}</span>` : ''}
+                            ${result.main_label ? `<span class="label-tag main">${toJapaneseLabel(result.main_label)}</span>` : ''}
                             ${subLabelsHtml}
-                            ${result.dataset_split ? `<span class="label-tag dataset">${result.dataset_split}</span>` : ''}
+                            ${result.dataset_split ? `<span class="label-tag dataset">${toJapaneseLabel(result.dataset_split)}</span>` : ''}
                         </div>
                     </div>
                 `;
+                // ファイル名クリックでコピー
+                item.querySelector('.result-filename').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const filename = result.filename;
+                    navigator.clipboard.writeText(filename).then(() => {
+                        this.classList.add('copied');
+                        setTimeout(() => this.classList.remove('copied'), 1200);
+                    });
+                });
+                // 画像クリックでモーダル
                 item.addEventListener('click', () => {
                     openEditModal(result);
                 });
@@ -772,13 +880,12 @@
             resultsContainer.innerHTML = '';
             resultsContainer.appendChild(grid);
 
-            // ページネーションUI
+            // ...ページネーションUIは既存のまま...
             document.getElementById('paginationContainer')?.remove();
             if (results.length > PAGE_SIZE) {
                 const pagination = document.createElement('div');
                 pagination.id = 'paginationContainer';
                 pagination.className = 'pagination-container';
-                // 前へ
                 const prevBtn = document.createElement('button');
                 prevBtn.textContent = '←';
                 prevBtn.className = 'pagination-btn';
@@ -786,7 +893,6 @@
                 prevBtn.disabled = page === 1;
                 prevBtn.onclick = () => displayResults(results, page - 1);
                 pagination.appendChild(prevBtn);
-                // ページ番号
                 for (let i = 1; i <= totalPages; i++) {
                     const pageBtn = document.createElement('button');
                     pageBtn.textContent = i;
@@ -797,7 +903,6 @@
                     pageBtn.onclick = () => displayResults(results, i);
                     pagination.appendChild(pageBtn);
                 }
-                // 次へ
                 const nextBtn = document.createElement('button');
                 nextBtn.textContent = '→';
                 nextBtn.className = 'pagination-btn';
@@ -917,8 +1022,8 @@
                 alert('ラベルの保存中にエラーが発生しました');
             }
         }
-
-        // モーダル内のラベルクリックイベント
+        
+        // --- モーダル内も同様に複数選択可に ---
         document.addEventListener('click', function(event) {
             if (event.target.classList.contains('modal-label-option')) {
                 const option = event.target;
@@ -927,7 +1032,6 @@
                 const parentId = parent.id;
 
                 if (parentId === 'modalMainLabels') {
-                    // クラス（単一選択）
                     parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
                     if (modalLabels.mainLabel === value) {
                         modalLabels.mainLabel = null;
@@ -936,7 +1040,6 @@
                         modalLabels.mainLabel = value;
                     }
                 } else if (parentId === 'modalDataset') {
-                    // データセット分割（単一選択）
                     parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
                     if (modalLabels.datasetSplit === value) {
                         modalLabels.datasetSplit = null;
@@ -945,13 +1048,12 @@
                         modalLabels.datasetSplit = value;
                     }
                 } else {
-                    // サブラベル（カテゴリ内単一選択）
-                    parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
+                    // サブラベルはカテゴリ問わず複数選択可
+                    option.classList.toggle('active');
                     const index = modalLabels.subLabels.indexOf(value);
                     if (index > -1) {
                         modalLabels.subLabels.splice(index, 1);
                     } else {
-                        option.classList.add('active');
                         modalLabels.subLabels.push(value);
                     }
                 }
