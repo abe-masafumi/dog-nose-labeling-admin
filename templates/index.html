@@ -229,6 +229,13 @@
             border-color: #007bff;
         }
 
+        .sub-label-option.disabled {
+            background: #eee;
+            color: #aaa;
+            border-color: #ddd;
+            cursor: not-allowed;
+        }
+
         .dataset-split {
             margin-bottom: 20px;
         }
@@ -486,6 +493,14 @@
                             <span class="sub-label-option" data-label="dark_fur" onclick="toggleSubLabel('dark_fur')">暗い毛色 (N)</span>
                         </div>
                     </div>
+                    <div class="sub-label-group">
+                        <h4>鼻の長さ</h4>
+                        <div class="sub-label-options">
+                            <span class="sub-label-option" data-label="nose_long" onclick="toggleSubLabel('nose_long')">長い (O)</span>
+                            <span class="sub-label-option" data-label="nose_medium" onclick="toggleSubLabel('nose_medium')">中 (M)</span>
+                            <span class="sub-label-option" data-label="nose_short" onclick="toggleSubLabel('nose_short')">短い (Shift+S)</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="dataset-split">
@@ -506,6 +521,18 @@
                 </div>
 
                 <div class="shortcuts">
+                    <div class="shortcut-item">
+                        <span>鼻の長さ: 長い</span>
+                        <span class="shortcut-key">O</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>鼻の長さ: 中</span>
+                        <span class="shortcut-key">M</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>鼻の長さ: 短い</span>
+                        <span class="shortcut-key">Shift+S</span>
+                    </div>
                     <h4>⌨️ キーボードショートカット</h4>
                     <div class="shortcut-item">
                         <span>鼻あり:</span>
@@ -1342,11 +1369,16 @@
                 const activeBtn = document.querySelector(`.label-button.${currentMainLabel}`);
                 if (activeBtn) activeBtn.classList.add('active');
             }
-            
+
             // サブラベルの状態更新
             document.querySelectorAll('.sub-label-option').forEach(option => {
                 option.classList.remove('active');
+                option.classList.remove('disabled');
                 const label = option.getAttribute('data-label');
+                // 鼻あり以外のときはdisabled
+                if (currentMainLabel !== 'nose') {
+                    option.classList.add('disabled');
+                }
                 if (label && currentSubLabels.includes(label)) {
                     option.classList.add('active');
                 }
@@ -1406,11 +1438,19 @@
                 'large': 'nose_size',
                 'small': 'nose_size',
                 'light_fur': 'fur_color',
-                'dark_fur': 'fur_color'
+                'dark_fur': 'fur_color',
+                'nose_long': 'nose_type',
+                'nose_medium': 'nose_type',
+                'nose_short': 'nose_type'
             };
-            
+
+            // 鼻あり以外の場合はサブラベルを選択不可
+            if (currentMainLabel !== 'nose') {
+                return;
+            }
+
             const currentCategory = labelCategories[label];
-            
+
             if (currentCategory) {
                 // 現在のラベルが既に選択されている場合は削除（クリア）
                 const currentIndex = currentSubLabels.indexOf(label);
@@ -1430,7 +1470,7 @@
                     currentSubLabels.push(label);
                 }
             }
-            
+
             updateUI();
         }
 
@@ -1523,6 +1563,22 @@
                 return;
             }
             switch(event.key) {
+                case 'o':
+                case 'O':
+                    toggleSubLabel('nose_long');
+                    break;
+                case 'm':
+                case 'M':
+                    toggleSubLabel('nose_medium');
+                    break;
+                case 's':
+                case 'S':
+                    if (event.shiftKey) {
+                        toggleSubLabel('nose_short');
+                    } else {
+                        toggleSubLabel('side');
+                    }
+                    break;
                 case '1':
                     setMainLabel('nose');
                     break;
@@ -1741,23 +1797,6 @@
             const resultDiv = document.getElementById('splitResult');
             
             resultDiv.innerHTML = `
-                <h4>✅ 自動分割完了</h4>
-                <p>${result.message}</p>
-                <div class="preview-stats">
-                    <div class="stat-item">
-                        <div class="stat-value">${result.train_count}枚</div>
-                        <div class="stat-label">Train (${result.train_percent_actual}%)</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${result.val_count}枚</div>
-                        <div class="stat-label">Val (${result.val_percent_actual}%)</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${result.test_count}枚</div>
-                        <div class="stat-label">Test (${result.test_percent_actual}%)</div>
-                    </div>
-                </div>
-                <p style="margin-top: 15px; color: #4CAF50; font-weight: bold;">
                     🔍 レビュー画面で結果を確認できます
                 </p>
             `;
