@@ -274,22 +274,31 @@ def save_label():
     bbox = data.get('bbox')
     if bbox is not None and not isinstance(bbox, str):
         bbox = json.dumps(bbox)
+    # 鼻の長さサブラベルが1つも選択されていない場合はis_completed=0で保存
+    try:
+        sub_labels_list = json.loads(sub_labels)
+    except Exception:
+        sub_labels_list = []
+    nose_length_labels = {'nose_long', 'nose_medium', 'nose_short'}
+    has_nose_length = any(lbl in sub_labels_list for lbl in nose_length_labels)
+    is_completed = 1
+    if main_label == 'nose' and not has_nose_length:
+        is_completed = 0
+
     conn = sqlite3.connect('labels.db')
     cursor = conn.cursor()
-    # is_completed=1を必ずセット
-    # 既存レコードがあればUPDATE、なければINSERT
     cursor.execute('''
         INSERT INTO labels (image_path, main_label, sub_labels, dataset_split, bbox, is_completed, is_manual, updated_at)
-        VALUES (?, ?, ?, ?, ?, 1, 'manual', CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, ?, 'manual', CURRENT_TIMESTAMP)
         ON CONFLICT(image_path) DO UPDATE SET
             main_label=excluded.main_label,
             sub_labels=excluded.sub_labels,
             dataset_split=excluded.dataset_split,
             bbox=excluded.bbox,
-            is_completed=1,
+            is_completed=excluded.is_completed,
             is_manual='manual',
             updated_at=CURRENT_TIMESTAMP
-    ''', (image_path, main_label, sub_labels, dataset_split, bbox))
+    ''', (image_path, main_label, sub_labels, dataset_split, bbox, is_completed))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
