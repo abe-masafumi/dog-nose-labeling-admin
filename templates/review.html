@@ -74,10 +74,10 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             width: 280px;
             min-width: 220px;
-            max-height: 70vh;
+            max-height: calc(100vh - 120px); /* 画面高に応じて可変 */
             overflow-y: auto;
             position: sticky;
-            top: 100px;
+            top: 80px; /* ヘッダー分の余白に合わせて詰める */
         }
 
         .filter-section h3 {
@@ -296,11 +296,14 @@
             margin: 2% auto;
             padding: 0;
             border-radius: 10px;
-            width: 90%;
-            max-width: 800px;
+            width: 95%;
+            max-width: 900px;
+            height: 90vh;              /* 画面内に収める */
             max-height: 90vh;
-            overflow-y: auto;
+            overflow: hidden;          /* 二重スクロール防止 */
             position: relative;
+            display: flex;             /* ヘッダー固定 + 本文可変 */
+            flex-direction: column;
         }
 
         .modal-header {
@@ -333,6 +336,8 @@
 
         .modal-body {
             padding: 20px;
+            flex: 1 1 auto;            /* 本文を可変領域に */
+            overflow: hidden;          /* 内部でスクロール制御 */
         }
 
         .modal-image-container {
@@ -363,21 +368,21 @@
             color: #333;
         }
 
-        .modal-label-options {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+        .modal-label-option {
+            white-space: nowrap;       /* テキストも折り返さない */
+            min-width: 70px;           /* ボタン幅を確保（必要に応じて調整） */
+            text-align: center;
         }
 
         .modal-label-option {
             background-color: #e9ecef;
             border: 2px solid #e9ecef;
-            padding: 8px 16px;
-            border-radius: 20px;
+            padding: 6px 12px;         /* コンパクト */
+            border-radius: 16px;
             cursor: pointer;
             transition: all 0.3s ease;
             user-select: none;
-            font-size: 0.9em;
+            font-size: 0.85em;         /* 文字小さめ */
         }
 
         .modal-label-option:hover {
@@ -394,8 +399,12 @@
             display: flex;
             gap: 10px;
             justify-content: flex-end;
-            padding-top: 20px;
+            padding: 10px 12px;        /* 常に見えるよう余白固定 */
             border-top: 1px solid #dee2e6;
+            position: sticky;          /* 右カラムの下部に貼り付け */
+            bottom: 0;
+            background: #fff;
+            z-index: 5;
         }
 
         .modal-save-btn, .modal-cancel-btn {
@@ -494,10 +503,217 @@
             z-index: 10;
             animation: fadeout 1.2s forwards;
         }
+        /* モーダルのサブラベルを横並び＆コンパクトに */
+        .compact-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;               /* セクション間の隙間を縮小 */
+            margin-bottom: 8px;
+        }
+        .compact-group .modal-label-options {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;               /* 間隔を縮小 */
+            flex-wrap: wrap;
+            white-space: normal;
+            background: none;
+            padding: 0;
+            border: none;
+            min-width: 0;
+            margin-bottom: 0;
+        }
+        .compact-group > div {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .modal-label-title {
+            font-size: 0.95em;       /* 少し小さく */
+            color: #333;
+            font-weight: 600;
+            margin: 0 0 2px 0;       /* タイトル周りの余白を圧縮 */
+            min-width: 0;
+            display: block;
+            letter-spacing: 0.02em;
+        }
         @keyframes fadeout {
             0% { opacity: 1; }
             80% { opacity: 1; }
             100% { opacity: 0; }
+        }
+        /* 2カラムレイアウト */
+        .modal-flex-body {
+            display: flex;
+            flex-direction: row;
+            gap: 24px;
+            min-height: 0;            /* 高さは親に委譲 */
+            height: 100%;
+            align-items: stretch;
+            justify-content: center;
+            overflow: hidden;         /* 内部でスクロール制御 */
+        }
+        .modal-image-side {
+            flex: 1 1 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 0;
+            max-width: 420px;
+            height: 100%;             /* 左カラムを全高に */
+            overflow: auto;           /* 左側も独立スクロール可 */
+        }
+        .modal-image-large {
+            max-width: 380px;         /* 少し横幅拡大 */
+            max-height: 65vh;         /* 画像を大きく表示 */
+            width: auto;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            background: #fff;
+        }
+        /* 画像の下にスペーサーを入れてフッタを下部に寄せる */
+        .modal-image-spacer { flex: 1 1 auto; width: 100%; }
+        /* 画像にcanvasを重ねるためのラッパー */
+        .modal-image-wrapper {
+            position: relative;
+            display: inline-block;
+            line-height: 0; /* 画像下の隙間対策 */
+        }
+        #modalCanvas {
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 2;
+            display: none; /* bboxがない場合は非表示 */
+            pointer-events: none; /* クリックを透過 */
+        }
+        .modal-filename-label {
+            margin-top: 8px;
+            font-weight: 600;
+            color: #333;
+            word-break: break-all;
+            font-size: 0.95em;        /* 少し小さく */
+            text-align: center;
+        }
+        .modal-labels-side {
+            flex: 1 1 0;
+            min-width: 0;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;         /* 中のセクションをスクロール */
+            word-break: break-word;  /* 長い単語も折り返し */
+        }
+        .modal-labels-section {
+            background: #f8f9fa;
+            padding: 12px;            /* 余白圧縮 */
+            border-radius: 8px;
+            margin: 8px 8px 0 8px;
+            flex: 1 1 auto;           /* 右側の可変スクロール領域 */
+            overflow-y: auto;
+            min-height: 0;
+        }
+        .modal-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 8px;
+            border-top: 1px solid #dee2e6;
+        }
+        /* クラス選択ボタンのborderと色をindex.htmlのクラス表示と同じに */
+        /* filepath: /Users/masa/ghq/github.com/abe-masafumi/dog-nose-labeling-admin/templates/review.html */
+        #modalMainLabels .modal-label-option {
+            background-color: #667eea;
+            color: #fff;
+            border: none;
+            font-weight: 600;
+            font-size: 1em;           /* やや縮小 */
+            border-radius: 10px;
+            padding: 10px 24px;       /* コンパクト */
+            margin-bottom: 8px;
+            box-shadow: none;
+            transition: background 0.2s, color 0.2s;
+        }
+        #modalMainLabels .modal-label-option:not(.active) {
+            opacity: 0.85;
+            background-color: #e9ecef;
+            color: #333;
+            font-weight: normal;
+            border: none;
+        }
+        #modalMainLabels .modal-label-option.active {
+            background: #28a745;
+            border-color: #28a745;
+            color: #fff;
+            font-weight: bold;
+        }
+        #modalMainLabels .modal-label-option:hover {
+            background-color: #5a67d8;
+            color: #fff;
+        }
+        .dataset-split {
+            margin-bottom: 20px;
+        }
+        .split-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+        .split-button {
+            padding: 8px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .split-button:hover {
+            border-color: #007bff;
+        }
+
+        .split-button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        /* データセット分割（モーダル内）のボタンをsplit-buttons風に横並びで表示 */
+        /* filepath: /Users/masa/ghq/github.com/abe-masafumi/dog-nose-labeling-admin/templates/review.html */
+        #modalDataset.modal-label-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+            margin-top: 8px;
+            align-items: center;
+        }
+        
+        #modalDataset .split-button {
+            padding: 6px 8px;         /* 縦を詰める */
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            color: #333;
+            font-weight: 600;
+            box-shadow: none;
+            margin-bottom: 0;
+            text-align: center;
+        }
+        
+        #modalDataset .split-button:hover {
+            border-color: #007bff;
+        }
+        
+        #modalDataset .split-button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
         }
     </style>
 </head>
@@ -558,7 +774,7 @@
                 </div>
             </div>
             <div class="filter-group">
-                <h4>データセット分割</h4>
+                <h3>データセット分割</h3>
                 <div class="filter-options" id="datasetFilters">
                     <div class="filter-option" data-value="train">Train</div>
                     <div class="filter-option" data-value="val">Val</div>
@@ -594,78 +810,104 @@
                 <h2>🏷️ ラベル編集</h2>
                 <button class="close" onclick="closeModal()">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="modal-image-container">
-                    <img id="modalImage" class="modal-image" src="" alt="">
-                    <div id="modalFilename" style="margin-top: 10px; font-weight: bold; color: #333;"></div>
+            <div class="modal-body modal-flex-body">
+                <!-- 左: 画像 -->
+                <div class="modal-image-side">
+                    <div class="modal-image-wrapper">
+                        <img id="modalImage" class="modal-image-large" src="" alt="">
+                        <canvas id="modalCanvas"></canvas>
+                    </div>
+                    <div class="modal-image-spacer"></div>
+                    <div id="modalFilename" class="modal-filename-label"></div>
+                    <div style="width:100%; display:flex; justify-content:center; margin-top: 8px; margin-bottom: 4px;">
+                        <button id="openOriginalModalBtn" class="modal-save-btn" style="background:#4a5568;">元画像サイズで編集</button>
+                    </div>
                 </div>
-                
-                <div class="modal-labels-section">
-                    <div class="modal-label-group">
-                        <h4>クラス</h4>
-                        <div class="modal-label-options" id="modalMainLabels">
-                            <div class="modal-label-option" data-value="nose">🐽 鼻あり</div>
+                <!-- 右: ラベル -->
+                <div class="modal-labels-side">
+                    <div class="modal-labels-section">
+                        <div class="modal-label-group">
+                            <h4>クラス</h4>
+                            <div class="modal-label-options" id="modalMainLabels">
+                                <div class="modal-label-option" data-value="nose">🐽 鼻あり</div>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>鼻の向き</h4>
-                        <div class="modal-label-options" id="modalOrientation">
-                            <div class="modal-label-option" data-value="front">正面</div>
-                            <div class="modal-label-option" data-value="side">横向き</div>
-                            <div class="modal-label-option" data-value="tilted">斜め</div>
+                        <!-- サブラベルカテゴリ名を上、選択肢を下に横並びで配置 -->
+                        <!-- filepath: /Users/masa/ghq/github.com/abe-masafumi/dog-nose-labeling-admin/templates/review.html -->
+                        <div class="modal-label-group compact-group">
+                            <div>
+                                <div class="modal-label-title">向き</div>
+                                <div class="modal-label-options" id="modalOrientation">
+                                    <div class="modal-label-option" data-value="front">正面</div>
+                                    <div class="modal-label-option" data-value="side">横向き</div>
+                                    <div class="modal-label-option" data-value="tilted">斜め</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="modal-label-title">鮮明判定</div>
+                                <div class="modal-label-options" id="modalClarity">
+                                    <div class="modal-label-option" data-value="clear">鮮明</div>
+                                    <div class="modal-label-option" data-value="blurred">ぼやけ</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="modal-label-title">色</div>
+                                <div class="modal-label-options" id="modalColor">
+                                    <div class="modal-label-option" data-value="black">黒</div>
+                                    <div class="modal-label-option" data-value="brown">茶色</div>
+                                    <div class="modal-label-option" data-value="gray">灰色</div>
+                                    <div class="modal-label-option" data-value="pink">ピンク</div>
+                                    <div class="modal-label-option" data-value="marble">マーブル</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="modal-label-title">大きさ</div>
+                                <div class="modal-label-options" id="modalSize">
+                                    <div class="modal-label-option" data-value="large">大きい</div>
+                                    <div class="modal-label-option" data-value="small">小さい</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="modal-label-title">毛色</div>
+                                <div class="modal-label-options" id="modalFur">
+                                    <div class="modal-label-option" data-value="light_fur">明るい毛色</div>
+                                    <div class="modal-label-option" data-value="dark_fur">暗い毛色</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="modal-label-title">鼻の長さ</div>
+                                <div class="modal-label-options" id="modalNoseLength">
+                                    <div class="modal-label-option" data-value="nose_long">長い</div>
+                                    <div class="modal-label-option" data-value="nose_medium">中</div>
+                                    <div class="modal-label-option" data-value="nose_short">短い</div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>鮮明判定</h4>
-                        <div class="modal-label-options" id="modalClarity">
-                            <div class="modal-label-option" data-value="clear">鮮明</div>
-                            <div class="modal-label-option" data-value="blurred">ぼやけ</div>
-                        </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>鼻の色</h4>
-                        <div class="modal-label-options" id="modalColor">
-                            <div class="modal-label-option" data-value="black">黒</div>
-                            <div class="modal-label-option" data-value="brown">茶色</div>
-                            <div class="modal-label-option" data-value="gray">灰色</div>
-                            <div class="modal-label-option" data-value="pink">ピンク</div>
-                            <div class="modal-label-option" data-value="marble">マーブル</div>
-                        </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>鼻の大きさ</h4>
-                        <div class="modal-label-options" id="modalSize">
-                            <div class="modal-label-option" data-value="large">大きい</div>
-                            <div class="modal-label-option" data-value="small">小さい</div>
-                        </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>毛色</h4>
-                        <div class="modal-label-options" id="modalFur">
-                            <div class="modal-label-option" data-value="light_fur">明るい毛色</div>
-                            <div class="modal-label-option" data-value="dark_fur">暗い毛色</div>
-                        </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>データセット分割</h4>
+                    <div class="dataset-split">
+                        <h3>データセット分割</h3>
                         <div class="modal-label-options" id="modalDataset">
-                            <div class="modal-label-option" data-value="train">Train</div>
-                            <div class="modal-label-option" data-value="val">Val</div>
-                            <div class="modal-label-option" data-value="test">Test</div>
+                            <div class="modal-label-option split-button" data-value="train">Train</div>
+                            <div class="modal-label-option split-button" data-value="val">Val</div>
+                            <div class="modal-label-option split-button" data-value="test">Test</div>
                         </div>
                     </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="modal-cancel-btn" onclick="closeModal()">キャンセル</button>
+                        <button class="modal-save-btn" onclick="saveModalLabels()">💾 保存</button>
+                    </div>
                 </div>
-
-                <div class="modal-actions">
-                    <button class="modal-cancel-btn" onclick="closeModal()">キャンセル</button>
-                    <button class="modal-save-btn" onclick="saveModalLabels()">💾 保存</button>
-                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 元画像サイズ編集モーダル（レビュー用） -->
+    <div id="originalModal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+        <div style="background:#fff; border-radius:12px; padding:24px; position:relative; max-width:98vw; max-height:98vh; overflow:auto;">
+            <button id="closeOriginalModalBtn" style="position:absolute; right:12px; top:12px; font-size:20px; background:none; border:none; cursor:pointer;">×</button>
+            <div id="originalModalContent" style="display:flex; flex-direction:column; align-items:center;"></div>
+            <div style="margin-top:16px; text-align:center; display:flex; gap:8px; justify-content:center;">
+                <button id="saveOriginalModalBtn" class="modal-save-btn">編集内容を適用</button>
+                <button id="cancelOriginalModalBtn" class="modal-cancel-btn">キャンセル</button>
             </div>
         </div>
     </div>
@@ -678,6 +920,7 @@
         };
 
         let currentEditingImage = null;
+    let modalCurrentBbox = null; // レビュー用モーダルで保持するbbox（{x_min,y_min,x_max,y_max}）
         let modalLabels = {
             mainLabel: null,
             subLabels: [],
@@ -713,6 +956,7 @@
             dark_fur: "暗い毛色",
             // 鼻の長さ
             nose_long: "鼻が長い",
+            nose_medium: "中",
             nose_short: "鼻が短い",
             // データセット分割
             train: "Train",
@@ -929,12 +1173,133 @@
             document.getElementById('resultsCount').textContent = '検索を実行してください';
         }
 
+        // --- BBox描画用ユーティリティ ---
+        function clearModalCanvas() {
+            const canvas = document.getElementById('modalCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.style.display = 'none';
+        }
+
+    function normalizeBbox(b) {
+            if (!b) return null;
+            try {
+                const bb = typeof b === 'string' ? JSON.parse(b) : b;
+                if (bb && typeof bb === 'object') {
+                    if ('x_min' in bb && 'y_min' in bb && 'x_max' in bb && 'y_max' in bb) {
+                        return { x_min: +bb.x_min, y_min: +bb.y_min, x_max: +bb.x_max, y_max: +bb.y_max };
+                    }
+                    if ('x' in bb && 'y' in bb && 'width' in bb && 'height' in bb) {
+                        return { x_min: +bb.x, y_min: +bb.y, x_max: +bb.x + +bb.width, y_max: +bb.y + +bb.height };
+                    }
+                }
+                if (Array.isArray(bb) && bb.length === 4) {
+                    const [x, y, w, h] = bb.map(Number);
+                    return { x_min: x, y_min: y, x_max: x + w, y_max: y + h };
+                }
+            } catch {}
+            return null;
+        }
+
+        function drawModalBbox(bboxRaw) {
+            const canvas = document.getElementById('modalCanvas');
+            const img = document.getElementById('modalImage');
+            if (!canvas || !img || !bboxRaw) return;
+            const bbox = normalizeBbox(bboxRaw);
+            if (!bbox) { clearModalCanvas(); return; }
+            // キャンバスを画像の描画サイズに合わせる
+            const rect = img.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            canvas.width = Math.round(rect.width * dpr);
+            canvas.height = Math.round(rect.height * dpr);
+            // 自然サイズ -> 表示サイズへのスケール
+            const naturalW = img.naturalWidth || rect.width;
+            const naturalH = img.naturalHeight || rect.height;
+            const scaleX = (canvas.width / dpr) / naturalW;
+            const scaleY = (canvas.height / dpr) / naturalH;
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // 高DPI対策
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 3;
+            const x = bbox.x_min * scaleX;
+            const y = bbox.y_min * scaleY;
+            const w = (bbox.x_max - bbox.x_min) * scaleX;
+            const h = (bbox.y_max - bbox.y_min) * scaleY;
+            ctx.strokeRect(x, y, w, h);
+            // 角のハンドル風ドット（表示のみ）
+            ctx.fillStyle = '#00bfff';
+            const hs = 6;
+            [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([cx,cy])=>{
+                ctx.fillRect(cx - hs/2, cy - hs/2, hs, hs);
+            });
+            canvas.style.display = 'block';
+        }
+
+    async function fetchAndDrawModalBbox(imageData) {
+            try {
+                // 画像IDがわかっていれば /api/images/<id> でbbox取得
+                if (imageData?.id) {
+                    const res = await fetch(`/api/images/${imageData.id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const bboxRaw = data?.bbox;
+                        if (bboxRaw) {
+                            const bbox = normalizeBbox(bboxRaw);
+                            if (bbox) {
+                                modalCurrentBbox = { ...bbox };
+                                const img = document.getElementById('modalImage');
+                                if (img.complete && img.naturalWidth) {
+                                    drawModalBbox(bbox);
+                                } else {
+                                    img.addEventListener('load', () => drawModalBbox(bbox), { once: true });
+                                }
+                                return;
+                            }
+                        }
+                    }
+                }
+                // idがない or 取得不可: /api/images 全件からfilename一致のレコードを探す（フォールバック）
+                const allRes = await fetch('/api/images');
+                if (allRes.ok) {
+                    const list = await allRes.json();
+                    const found = list.find(it => it.filename === imageData.filename);
+                    const bboxRaw2 = found?.bbox;
+                    if (bboxRaw2) {
+                        const bbox2 = normalizeBbox(bboxRaw2);
+                        if (bbox2) {
+                            modalCurrentBbox = { ...bbox2 };
+                            const img = document.getElementById('modalImage');
+                            if (img.complete && img.naturalWidth) {
+                                drawModalBbox(bbox2);
+                            } else {
+                                img.addEventListener('load', () => drawModalBbox(bbox2), { once: true });
+                            }
+                            return;
+                        }
+                    }
+                }
+                // bboxなし
+                modalCurrentBbox = null;
+                clearModalCanvas();
+            } catch (e) {
+                console.warn('bbox取得/描画に失敗:', e);
+                modalCurrentBbox = null;
+                clearModalCanvas();
+            }
+        }
+
         function openEditModal(imageData) {
             currentEditingImage = imageData;
             
             // 画像とファイル名を設定
             document.getElementById('modalImage').src = `/images/${imageData.filename}`;
             document.getElementById('modalFilename').textContent = imageData.filename;
+            // 既存のキャンバス描画をクリア
+            clearModalCanvas();
             
             // 現在のラベルを設定
             modalLabels = {
@@ -948,16 +1313,20 @@
             
             // モーダルを表示
             document.getElementById('labelEditModal').style.display = 'block';
+            // bboxを取得して描画
+            fetchAndDrawModalBbox(imageData);
         }
 
         function closeModal() {
             document.getElementById('labelEditModal').style.display = 'none';
             currentEditingImage = null;
+            modalCurrentBbox = null;
             modalLabels = {
                 mainLabel: null,
                 subLabels: [],
                 datasetSplit: null
             };
+            clearModalCanvas();
         }
 
         function updateModalLabels() {
@@ -985,7 +1354,7 @@
             }
         }
 
-        async function saveModalLabels() {
+    async function saveModalLabels() {
             if (!currentEditingImage) return;
             
             // 現在のスクロール位置を保存
@@ -1001,7 +1370,8 @@
                         image_path: currentEditingImage.filepath,
                         main_label: modalLabels.mainLabel,
                         sub_labels: modalLabels.subLabels,
-                        dataset_split: modalLabels.datasetSplit
+                        dataset_split: modalLabels.datasetSplit,
+                        bbox: modalCurrentBbox || undefined
                     })
                 });
                 
@@ -1023,7 +1393,7 @@
             }
         }
         
-        // --- モーダル内も同様に複数選択可に ---
+        // モーダル内サブラベルカテゴリごとに1つのみ選択可
         document.addEventListener('click', function(event) {
             if (event.target.classList.contains('modal-label-option')) {
                 const option = event.target;
@@ -1042,18 +1412,28 @@
                 } else if (parentId === 'modalDataset') {
                     parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
                     if (modalLabels.datasetSplit === value) {
-                        modalLabels.datasetSplit = null;
+                        modalLabels.datasetSplit = null; // 再クリックで解除
                     } else {
                         option.classList.add('active');
-                        modalLabels.datasetSplit = value;
-                    }
-                } else {
-                    // サブラベルはカテゴリ問わず複数選択可
-                    option.classList.toggle('active');
-                    const index = modalLabels.subLabels.indexOf(value);
-                    if (index > -1) {
-                        modalLabels.subLabels.splice(index, 1);
-                    } else {
+                            modalLabels.datasetSplit = value;
+                        }
+                } else if (
+                    ['modalOrientation','modalClarity','modalColor','modalSize','modalFur', 'modalNoseLength'].includes(parentId)
+                ) {
+                    // サブラベルカテゴリごとに単一選択
+                    parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
+                    // 既存の同カテゴリ値をmodalLabels.subLabelsから除去
+                    const groupLabels = {
+                        modalOrientation: ['front', 'side', 'tilted'],
+                        modalClarity: ['clear', 'blurred'],
+                        modalColor: ['black', 'brown', 'gray', 'pink', 'marble'],
+                        modalSize: ['large', 'small'],
+                        modalFur: ['light_fur', 'dark_fur'],
+                        modalNoseLength: ['nose_long', 'nose_medium', 'nose_short']
+                    };
+                    modalLabels.subLabels = modalLabels.subLabels.filter(l => !groupLabels[parentId].includes(l));
+                    if (!option.classList.contains('active')) {
+                        option.classList.add('active');
                         modalLabels.subLabels.push(value);
                     }
                 }
@@ -1087,9 +1467,192 @@
                     backToTopButton.style.display = 'none';
                 }
             });
+
+            // 初期表示で全件（対象）検索を実行
+            // フィルター未選択のため、/api/filter から is_completed=1 の全件が返ります
+            searchImages();
         }
 
         document.addEventListener('DOMContentLoaded', init);
+
+        // === 元画像サイズ編集（レビュー用） ===
+        let originalModal = null;
+        let originalModalContent = null;
+        let originalModalImg = null;
+        let originalModalCanvas = null;
+        let originalModalBbox = null;
+        let originalModalOriginalBbox = null;
+        let originalModalResizeCorner = null;
+        let originalModalIsDrawing = false;
+        let originalModalIsMoving = false;
+        let originalModalIsResizing = false;
+        let originalModalMoveOffsetX = 0, originalModalMoveOffsetY = 0;
+
+        function drawOriginalModalBbox() {
+            if (!originalModalCanvas || !originalModalBbox) return;
+            const ctx = originalModalCanvas.getContext('2d');
+            ctx.clearRect(0, 0, originalModalCanvas.width, originalModalCanvas.height);
+            const { x_min, y_min, x_max, y_max } = originalModalBbox;
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x_min, y_min, x_max - x_min, y_max - y_min);
+            ctx.fillStyle = 'deepskyblue';
+            const handleSize = 8;
+            [ [x_min, y_min], [x_max, y_min], [x_min, y_max], [x_max, y_max] ].forEach(([cx, cy]) => {
+                ctx.fillRect(cx - handleSize/2, cy - handleSize/2, handleSize, handleSize);
+            });
+        }
+
+        function setupOriginalModalEvents() {
+            if (!originalModalCanvas) return;
+            // クリア
+            originalModalCanvas.onmousedown = null;
+            originalModalCanvas.onmousemove = null;
+            originalModalCanvas.onmouseup = null;
+
+            function getCornerHandle(x, y, bbox, handleSize = 10) {
+                if (!bbox) return null;
+                let { x_min, y_min, x_max, y_max } = bbox;
+                if (x_min > x_max) [x_min, x_max] = [x_max, x_min];
+                if (y_min > y_max) [y_min, y_max] = [y_max, y_min];
+                const corners = [
+                    { name: 'tl', x: x_min, y: y_min },
+                    { name: 'tr', x: x_max, y: y_min },
+                    { name: 'bl', x: x_min, y: y_max },
+                    { name: 'br', x: x_max, y: y_max }
+                ];
+                for (const corner of corners) {
+                    if (Math.abs(x - corner.x) <= handleSize && Math.abs(y - corner.y) <= handleSize) return corner.name;
+                }
+                return null;
+            }
+
+            originalModalCanvas.addEventListener('mousedown', (e) => {
+                const rect = originalModalCanvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (originalModalCanvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (originalModalCanvas.height / rect.height);
+                const bbox = originalModalBbox || null;
+                const corner = bbox ? getCornerHandle(x, y, bbox) : null;
+                originalModalIsDrawing = false; originalModalIsMoving = false; originalModalIsResizing = false;
+                if (bbox && corner) {
+                    originalModalIsResizing = true;
+                    originalModalResizeCorner = corner;
+                    originalModalOriginalBbox = { ...bbox };
+                } else if (bbox && x >= bbox.x_min && x <= bbox.x_max && y >= bbox.y_min && y <= bbox.y_max) {
+                    originalModalIsMoving = true;
+                    originalModalOriginalBbox = { ...bbox };
+                    originalModalMoveOffsetX = x - bbox.x_min;
+                    originalModalMoveOffsetY = y - bbox.y_min;
+                } else {
+                    originalModalIsDrawing = true;
+                    originalModalBbox = { x_min: x, y_min: y, x_max: x, y_max: y };
+                }
+                drawOriginalModalBbox();
+            });
+
+            originalModalCanvas.addEventListener('mousemove', (e) => {
+                const rect = originalModalCanvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (originalModalCanvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (originalModalCanvas.height / rect.height);
+                const bbox = originalModalBbox || null;
+                if (!bbox) return;
+                if (originalModalIsDrawing) {
+                    const dx = x - bbox.x_min; const dy = y - bbox.y_min;
+                    const size = Math.max(Math.abs(dx), Math.abs(dy));
+                    bbox.x_max = dx >= 0 ? bbox.x_min + size : bbox.x_min - size;
+                    bbox.y_max = dy >= 0 ? bbox.y_min + size : bbox.y_min - size;
+                } else if (originalModalIsMoving) {
+                    const w = originalModalOriginalBbox.x_max - originalModalOriginalBbox.x_min;
+                    const h = originalModalOriginalBbox.y_max - originalModalOriginalBbox.y_min;
+                    bbox.x_min = x - originalModalMoveOffsetX;
+                    bbox.y_min = y - originalModalMoveOffsetY;
+                    bbox.x_max = bbox.x_min + w;
+                    bbox.y_max = bbox.y_min + h;
+                } else if (originalModalIsResizing) {
+                    let { x_min, y_min, x_max, y_max } = originalModalOriginalBbox;
+                    let nx1=x_min, ny1=y_min, nx2=x_max, ny2=y_max;
+                    switch (originalModalResizeCorner) {
+                        case 'tl': { const side = Math.max(x_max - x, y_max - y); nx1 = x_max - side; ny1 = y_max - side; break; }
+                        case 'tr': { const side = Math.max(x - x_min, y_max - y); nx2 = x_min + side; ny1 = y_max - side; break; }
+                        case 'bl': { const side = Math.max(x_max - x, y - y_min); nx1 = x_max - side; ny2 = y_min + side; break; }
+                        case 'br': { const side = Math.max(x - x_min, y - y_min); nx2 = x_min + side; ny2 = y_min + side; break; }
+                    }
+                    bbox.x_min = nx1; bbox.y_min = ny1; bbox.x_max = nx2; bbox.y_max = ny2;
+                }
+                drawOriginalModalBbox();
+            });
+
+            originalModalCanvas.addEventListener('mouseup', () => {
+                originalModalIsDrawing = false; originalModalIsMoving = false; originalModalIsResizing = false;
+            });
+        }
+
+        function openOriginalModal(imgUrl, bbox) {
+            originalModal = document.getElementById('originalModal');
+            originalModalContent = document.getElementById('originalModalContent');
+            originalModalContent.innerHTML = '';
+            originalModalImg = new Image();
+            originalModalImg.src = imgUrl;
+            originalModalImg.onload = function() {
+                originalModalCanvas = document.createElement('canvas');
+                originalModalCanvas.width = originalModalImg.naturalWidth;
+                originalModalCanvas.height = originalModalImg.naturalHeight;
+                originalModalCanvas.style.width = originalModalImg.naturalWidth + 'px';
+                originalModalCanvas.style.height = originalModalImg.naturalHeight + 'px';
+                originalModalCanvas.style.position = 'absolute';
+                originalModalCanvas.style.left = '0';
+                originalModalCanvas.style.top = '0';
+                originalModalCanvas.style.zIndex = '2';
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'relative';
+                wrapper.style.display = 'inline-block';
+                wrapper.appendChild(originalModalImg);
+                wrapper.appendChild(originalModalCanvas);
+                originalModalContent.appendChild(wrapper);
+                originalModalBbox = bbox ? { ...bbox } : null;
+                drawOriginalModalBbox();
+                setupOriginalModalEvents();
+            };
+            originalModal.style.display = 'flex';
+        }
+
+        function closeOriginalModal() {
+            const modal = document.getElementById('originalModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function saveOriginalModalBbox() {
+            if (originalModalBbox) {
+                modalCurrentBbox = { ...originalModalBbox };
+                // モーダルのプレビューに反映
+                drawModalBbox(modalCurrentBbox);
+            }
+            closeOriginalModal();
+        }
+
+        // ボタン配線
+        window.addEventListener('DOMContentLoaded', () => {
+            const openBtn = document.getElementById('openOriginalModalBtn');
+            if (openBtn) {
+                openBtn.addEventListener('click', () => {
+                    const imgEl = document.getElementById('modalImage');
+                    const bbox = modalCurrentBbox ? { ...modalCurrentBbox } : null;
+                    if (imgEl?.src) openOriginalModal(imgEl.src, bbox);
+                });
+            }
+            document.getElementById('closeOriginalModalBtn')?.addEventListener('click', closeOriginalModal);
+            document.getElementById('cancelOriginalModalBtn')?.addEventListener('click', closeOriginalModal);
+            document.getElementById('saveOriginalModalBtn')?.addEventListener('click', saveOriginalModalBbox);
+        });
+
+        // 画像サイズ変化時にcanvas追従（リサイズでも）
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('modalCanvas');
+            const img = document.getElementById('modalImage');
+            if (!canvas || !img || canvas.style.display === 'none') return;
+            // 直前のbboxを再取得して再描画（currentEditingImageの最新を参照）
+            if (currentEditingImage) fetchAndDrawModalBbox(currentEditingImage);
+        });
     </script>
 </body>
 </html>
