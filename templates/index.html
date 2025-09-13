@@ -17,21 +17,6 @@
             color: #333;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
 		.container {
 			max-width: 1200px;
 			margin: 0 auto;
@@ -362,7 +347,7 @@
 </head>
 <body>
     {% include 'header.html' with context %}
-    <div class="container" style="padding-top:80px;">
+    <div class="container">
         <div class="header">
             <h1>🐕 犬の鼻ラベリング管理ツール</h1>
             <p>犬の顔画像から鼻の有無を判定し、機械学習用データセットを作成します</p>
@@ -497,7 +482,7 @@
                         <h4>鼻の長さ</h4>
                         <div class="sub-label-options">
                             <span class="sub-label-option" data-label="nose_long" onclick="toggleSubLabel('nose_long')">長い (O)</span>
-                            <span class="sub-label-option" data-label="nose_medium" onclick="toggleSubLabel('nose_medium')">中 (M)</span>
+                            <span class="sub-label-option" data-label="nose_medium" onclick="toggleSubLabel('nose_medium')">中 (Shift+M)</span>
                             <span class="sub-label-option" data-label="nose_short" onclick="toggleSubLabel('nose_short')">短い (Shift+S)</span>
                         </div>
                     </div>
@@ -579,6 +564,22 @@
                         <span class="shortcut-key">P</span>
                     </div>
                     <div class="shortcut-item">
+                        <span>灰色:</span>
+                        <span class="shortcut-key">G</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>マーブル:</span>
+                        <span class="shortcut-key">Shift+M</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>濡れている:</span>
+                        <span class="shortcut-key">W</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>乾いている:</span>
+                        <span class="shortcut-key">D</span>
+                    </div>
+                    <div class="shortcut-item">
                         <span>前の画像:</span>
                         <span class="shortcut-key">←</span>
                     </div>
@@ -596,45 +597,108 @@
     </div>
 
     <script>
-        // この画像だけデータセットZIPエクスポート
-        async function exportCurrentImageDataset() {
-            if (!images || images.length === 0) {
-                alert('画像がありません');
-                return;
-            }
-            const image = images[currentImageIndex];
-            if (!image || !image.id) {
-                alert('画像情報が取得できません');
-                return;
-            }
-            const btn = document.querySelector('.export-button[onclick="exportCurrentImageDataset()"]');
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = 'エクスポート中...';
-            }
+        // ---------------- 定数 ----------------
+        const API_ENDPOINTS = {
+            IMAGES: '/api/images',
+            LABELS: '/api/labels',
+            EXPORT_SINGLE: '/api/export_single',
+            EXPORT_DATASET: '/api/export/dataset',
+            AUTO_SPLIT: '/api/auto-split'
+        };
+
+        const UI_CONSTANTS = {
+            MAX_PREVIEW_WIDTH: 400,
+            MAX_PREVIEW_HEIGHT: 400,
+            HANDLE_SIZE: 8,
+            EXPORT_FILENAME_SUFFIX: '_dataset.zip'
+        };
+
+        // ---------------- ユーティリティ関数 ----------------
+
+        function safeParseJSON(json, fallback = null) {
             try {
-                const res = await fetch(`/api/export_single/${image.id}`);
-                if (!res.ok) throw new Error('エクスポートに失敗しました');
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${image.filename.replace(/\.[^.]+$/, '')}_dataset.zip`;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => {
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                }, 100);
-            } catch (e) {
-                alert('エクスポートに失敗しました');
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = 'この画像だけデータセットZIP';
-                }
+                return typeof json === 'string' ? JSON.parse(json) : json;
+            } catch {
+                return fallback;
             }
         }
+
+        /** fetch API の共通処理 */
+        async function fetchJson(url, options = {}) {
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error(`${url} の取得に失敗しました`);
+            return res.json();
+        }
+
+        /** BBoxをcanvasに描画する */
+        function drawBboxOnCanvas(bbox, canvas) {
+            if (!canvas || !bbox) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(
+                bbox.x_min,
+                bbox.y_min,
+                bbox.x_max - bbox.x_min,
+                bbox.y_max - bbox.y_min
+            );
+
+            // 角ハンドル描画
+            ctx.fillStyle = '#00bfff';
+            [[bbox.x_min, bbox.y_min], [bbox.x_max, bbox.y_min], 
+            [bbox.x_min, bbox.y_max], [bbox.x_max, bbox.y_max]
+            ].forEach(([cx, cy]) => {
+                ctx.fillRect(
+                cx - UI_CONSTANTS.HANDLE_SIZE / 2,
+                cy - UI_CONSTANTS.HANDLE_SIZE / 2,
+                UI_CONSTANTS.HANDLE_SIZE,
+                UI_CONSTANTS.HANDLE_SIZE
+                );
+            });
+        }
+
+        /**
+         * 現在の画像をデータセットZIPとしてエクスポート
+         */
+        async function exportCurrentImageDataset() {
+            if (!images?.length) return alert('画像がありません');
+
+            const image = images[currentImageIndex];
+            if (!image?.id) return alert('画像情報が取得できません');
+
+            const buttonElement = document.querySelector('.export-button[onclick="exportCurrentImageDataset()"]');
+            if (!buttonElement) return;
+
+            buttonElement.disabled = true;
+            buttonElement.textContent = 'エクスポート中...';
+
+            try {
+                const res = await fetch(`${API_ENDPOINTS.EXPORT_SINGLE}/${image.id}`);
+                if (!res.ok) throw new Error();
+
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${image.filename.replace(/\.[^.]+$/, '')}${UI_CONSTANTS.EXPORT_FILENAME_SUFFIX}`;
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(() => {
+                URL.revokeObjectURL(url);
+                a.remove();
+                }, 100);
+            } catch {
+                alert('エクスポートに失敗しました');
+            } finally {
+                buttonElement.disabled = false;
+                buttonElement.textContent = 'この画像だけデータセットZIP';
+            }
+        }
+
+
         // --- 元画像サイズ編集モーダル ---
         let originalModal = null;
         let originalModalContent = null;
@@ -1040,43 +1104,6 @@
                     }
                 };
             }
-        // バウンディングボックス描画関数
-    window.drawBboxOnCanvas = function drawBboxOnCanvas(bboxJson, canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (!bboxJson) return;
-            let bbox;
-            try {
-                bbox = typeof bboxJson === 'string' ? JSON.parse(bboxJson) : bboxJson;
-            } catch (e) { return; }
-            if (bbox && bbox.x_min != null) {
-                ctx.strokeStyle = '#ff0000';
-                ctx.lineWidth = 4;
-                ctx.strokeRect(
-                    bbox.x_min,
-                    bbox.y_min,
-                    bbox.x_max - bbox.x_min,
-                    bbox.y_max - bbox.y_min
-                );
-                // 角ハンドル描画
-                const handleSize = 8;
-                const corners = [
-                    [bbox.x_min, bbox.y_min],
-                    [bbox.x_max, bbox.y_min],
-                    [bbox.x_min, bbox.y_max],
-                    [bbox.x_max, bbox.y_max]
-                ];
-                ctx.fillStyle = '#00bfff';
-                for (const [cx, cy] of corners) {
-                    ctx.fillRect(
-                        cx - handleSize/2,
-                        cy - handleSize/2,
-                        handleSize,
-                        handleSize
-                    );
-                }
-            }
-        }
 
         // bbox描画・編集用のマウスイベント（ドラッグで新規作成/編集）
         function setupBboxCanvasEvents(canvas, img) {
@@ -1441,7 +1468,9 @@
                 'dark_fur': 'fur_color',
                 'nose_long': 'nose_type',
                 'nose_medium': 'nose_type',
-                'nose_short': 'nose_type'
+                'nose_short': 'nose_type',
+                'wet': 'moisture',
+                'dry': 'moisture'
             };
 
             // 鼻あり以外の場合はサブラベルを選択不可
@@ -1546,14 +1575,6 @@
             }
         }
 
-
-
-        // データセットエクスポート
-        function exportDataset() {
-            window.open('/api/export/dataset', '_blank');
-        }
-
-        // キーボードショートカット
         document.addEventListener('keydown', function(event) {
             // 元画像編集モーダルが開いている場合はEnterで保存・閉じる
             if (originalModal && originalModal.style.display === 'flex') {
@@ -1571,14 +1592,17 @@
             if (event.metaKey || event.ctrlKey || event.altKey) {
                 return;
             }
-            switch(event.key) {
-                case 'o':
-                case 'O':
-                    toggleSubLabel('nose_long');
+            // ショートカット重複を整理
+            switch (event.key) {
+                case '1':
+                    setMainLabel('nose');
                     break;
-                case 'm':
-                case 'M':
-                    toggleSubLabel('nose_medium');
+                case '2':
+                    setMainLabel(null); // 鼻なし
+                    break;
+                case 'f':
+                case 'F':
+                    toggleSubLabel('front');
                     break;
                 case 's':
                 case 'S':
@@ -1587,17 +1611,6 @@
                     } else {
                         toggleSubLabel('side');
                     }
-                    break;
-                case '1':
-                    setMainLabel('nose');
-                    break;
-                case 'f':
-                case 'F':
-                    toggleSubLabel('front');
-                    break;
-                case 's':
-                case 'S':
-                    toggleSubLabel('side');
                     break;
                 case 't':
                 case 'T':
@@ -1619,17 +1632,21 @@
                 case 'R':
                     toggleSubLabel('brown');
                     break;
-                case 'p':
-                case 'P':
-                    toggleSubLabel('pink');
-                    break;
                 case 'g':
                 case 'G':
                     toggleSubLabel('gray');
                     break;
+                case 'p':
+                case 'P':
+                    toggleSubLabel('pink');
+                    break;
                 case 'm':
                 case 'M':
-                    toggleSubLabel('marble');
+                    if (event.shiftKey) {
+                        toggleSubLabel('nose_medium');
+                    } else {
+                        toggleSubLabel('marble');
+                    }
                     break;
                 case 'l':
                 case 'L':
@@ -1647,6 +1664,18 @@
                 case 'N':
                     toggleSubLabel('dark_fur');
                     break;
+                case 'o':
+                case 'O':
+                    toggleSubLabel('nose_long');
+                    break;
+                case 'w':
+                case 'W':
+                    toggleSubLabel('wet');
+                    break;
+                case 'd':
+                case 'D':
+                    toggleSubLabel('dry');
+                    break;
                 case 'ArrowLeft':
                     previousImage();
                     break;
@@ -1658,7 +1687,6 @@
                     break;
             }
         });
-
 
         async function previewAutoSplit() {
             const trainPercent = parseFloat(document.getElementById('trainPercent').value);
