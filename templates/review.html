@@ -181,10 +181,11 @@
         }
 
         .result-item {
-            border: 1px solid #ddd;
+            border: 2px solid transparent; /* hover時に幅が変わらないよう固定 */
             border-radius: 8px;
             overflow: hidden;
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+            will-change: transform;
         }
 
         .result-item:hover {
@@ -194,7 +195,7 @@
 
         .result-item.clickable:hover {
             background-color: #f8f9fa;
-            border: 2px solid #667eea;
+            border-color: #667eea; /* 幅は変えず色のみ */
             cursor: pointer;
         }
 
@@ -1240,12 +1241,23 @@
         }
 
     async function fetchAndDrawModalBbox(imageData) {
+            // 鼻あり以外は描画しない
+            if (!imageData || imageData.main_label !== 'nose') {
+                modalCurrentBbox = null;
+                clearModalCanvas();
+                return;
+            }
             try {
                 // 画像IDがわかっていれば /api/images/<id> でbbox取得
                 if (imageData?.id) {
                     const res = await fetch(`/api/images/${imageData.id}`);
                     if (res.ok) {
                         const data = await res.json();
+                        if (!data || data.main_label !== 'nose') {
+                            modalCurrentBbox = null;
+                            clearModalCanvas();
+                            return;
+                        }
                         const bboxRaw = data?.bbox;
                         if (bboxRaw) {
                             const bbox = normalizeBbox(bboxRaw);
@@ -1267,6 +1279,11 @@
                 if (allRes.ok) {
                     const list = await allRes.json();
                     const found = list.find(it => it.filename === imageData.filename);
+                    if (!found || found.main_label !== 'nose') {
+                        modalCurrentBbox = null;
+                        clearModalCanvas();
+                        return;
+                    }
                     const bboxRaw2 = found?.bbox;
                     if (bboxRaw2) {
                         const bbox2 = normalizeBbox(bboxRaw2);
@@ -1313,8 +1330,13 @@
             
             // モーダルを表示
             document.getElementById('labelEditModal').style.display = 'block';
-            // bboxを取得して描画
-            fetchAndDrawModalBbox(imageData);
+            // bboxを取得して描画（鼻ありのみ）
+            if (imageData.main_label === 'nose') {
+                fetchAndDrawModalBbox(imageData);
+            } else {
+                modalCurrentBbox = null;
+                clearModalCanvas();
+            }
         }
 
         function closeModal() {
@@ -1371,7 +1393,8 @@
                         main_label: modalLabels.mainLabel,
                         sub_labels: modalLabels.subLabels,
                         dataset_split: modalLabels.datasetSplit,
-                        bbox: modalCurrentBbox || undefined
+                        // 鼻あり以外はbboxを保存しない
+                        bbox: (modalLabels.mainLabel === 'nose') ? (modalCurrentBbox || undefined) : null
                     })
                 });
                 
@@ -1408,6 +1431,13 @@
                     } else {
                         option.classList.add('active');
                         modalLabels.mainLabel = value;
+                    }
+                    // 鼻なしに切り替えたらbboxをクリア、鼻ありにしたら再取得
+                    if (modalLabels.mainLabel !== 'nose') {
+                        modalCurrentBbox = null;
+                        clearModalCanvas();
+                    } else if (currentEditingImage) {
+                        fetchAndDrawModalBbox(currentEditingImage);
                     }
                 } else if (parentId === 'modalDataset') {
                     parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
@@ -1622,7 +1652,8 @@
         }
 
         function saveOriginalModalBbox() {
-            if (originalModalBbox) {
+            // 鼻ありの場合のみ反映
+            if (modalLabels.mainLabel === 'nose' && originalModalBbox) {
                 modalCurrentBbox = { ...originalModalBbox };
                 // モーダルのプレビューに反映
                 drawModalBbox(modalCurrentBbox);
@@ -1649,8 +1680,15 @@
         window.addEventListener('resize', () => {
             const canvas = document.getElementById('modalCanvas');
             const img = document.getElementById('modalImage');
-            if (!canvas || !img || canvas.style.display === 'none') return;
-            // 直前のbboxを再取得して再描画（currentEditingImageの最新を参照）
+            if (!canvas || !img) return;
+            // 鼻なしは何もしない
+            if (modalLabels?.mainLabel !== 'nose') return;
+            // bboxが存在するなら再取得せず再描画のみ（スケールを合わせ直す）
+            if (modalCurrentBbox) {
+                drawModalBbox(modalCurrentBbox);
+                return;
+            }
+            // 必要に応じて取得
             if (currentEditingImage) fetchAndDrawModalBbox(currentEditingImage);
         });
     </script>
