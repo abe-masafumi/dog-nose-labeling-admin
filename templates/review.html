@@ -296,8 +296,9 @@
             margin: 2% auto;
             padding: 0;
             border-radius: 10px;
-            width: 90%;
-            max-width: 800px;
+            width: 95%;
+            min-height: 850px;
+            max-width: 900px;
             max-height: 90vh;
             overflow-y: auto;
             position: relative;
@@ -363,10 +364,10 @@
             color: #333;
         }
 
-        .modal-label-options {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+        .modal-label-option {
+            white-space: nowrap;       /* テキストも折り返さない */
+            min-width: 70px;           /* ボタン幅を確保（必要に応じて調整） */
+            text-align: center;
         }
 
         .modal-label-option {
@@ -494,10 +495,198 @@
             z-index: 10;
             animation: fadeout 1.2s forwards;
         }
+        /* モーダルのサブラベルを横並び＆コンパクトに */
+        .compact-group {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-bottom: 16px;
+        }
+        .compact-group .modal-label-options {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;         /* 折り返し禁止 */
+            white-space: normal;       /* テキストも折り返さない */
+            background: none;
+            padding: 0;
+            border: none;
+            min-width: 0;
+            margin-bottom: 0;
+        }
+        .compact-group > div {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .modal-label-title {
+            font-size: 1em;
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 0;
+            margin-top: 0;
+            min-width: 0;
+            display: block;
+            letter-spacing: 0.02em;
+        }
         @keyframes fadeout {
             0% { opacity: 1; }
             80% { opacity: 1; }
             100% { opacity: 0; }
+        }
+        /* 2カラムレイアウト */
+        .modal-flex-body {
+            display: flex;
+            flex-direction: row;
+            gap: 32px;
+            min-height: 400px;
+            max-height: 80vh;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        .modal-image-side {
+            flex: 1 1 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 0;
+            max-width: 380px;
+        }
+        .modal-image-large {
+            max-width: 340px;
+            max-height: 60vh;
+            width: auto;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            background: #fff;
+        }
+        .modal-filename-label {
+            margin-top: 12px;
+            font-weight: bold;
+            color: #333;
+            word-break: break-all;
+            font-size: 1em;
+            text-align: center;
+        }
+        .modal-labels-side {
+            flex: 1 1 0;
+            min-width: 0;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+            overflow-x: hidden;      /* 横スクロール禁止 */
+            word-break: break-word;  /* 長い単語も折り返し */
+        }
+        .modal-labels-section {
+            background: #f8f9fa;
+            padding: 16px 16px 8px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            max-height: 72vh;
+            overflow-y: auto;
+        }
+        .modal-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 8px;
+            border-top: 1px solid #dee2e6;
+        }
+        /* クラス選択ボタンのborderと色をindex.htmlのクラス表示と同じに */
+        /* filepath: /Users/masa/ghq/github.com/abe-masafumi/dog-nose-labeling-admin/templates/review.html */
+        #modalMainLabels .modal-label-option {
+            background-color: #667eea;
+            color: #fff;
+            border: none;
+            font-weight: bold;
+            font-size: 1.1em;
+            border-radius: 10px;
+            padding: 12px 32px;
+            margin-bottom: 10px;
+            box-shadow: none;
+            transition: background 0.2s, color 0.2s;
+        }
+        #modalMainLabels .modal-label-option:not(.active) {
+            opacity: 0.85;
+            background-color: #e9ecef;
+            color: #333;
+            font-weight: normal;
+            border: none;
+        }
+        #modalMainLabels .modal-label-option.active {
+            background: #28a745;
+            border-color: #28a745;
+            color: #fff;
+            font-weight: bold;
+        }
+        #modalMainLabels .modal-label-option:hover {
+            background-color: #5a67d8;
+            color: #fff;
+        }
+        .dataset-split {
+            margin-bottom: 20px;
+        }
+        .split-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+        .split-button {
+            padding: 8px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .split-button:hover {
+            border-color: #007bff;
+        }
+
+        .split-button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        /* データセット分割（モーダル内）のボタンをsplit-buttons風に横並びで表示 */
+        /* filepath: /Users/masa/ghq/github.com/abe-masafumi/dog-nose-labeling-admin/templates/review.html */
+        #modalDataset.modal-label-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+            margin-top: 8px;
+        }
+        
+        #modalDataset .split-button {
+            padding: 8px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            color: #333;
+            font-weight: bold;
+            box-shadow: none;
+            margin-bottom: 0;
+            text-align: center;
+        }
+        
+        #modalDataset .split-button:hover {
+            border-color: #007bff;
+        }
+        
+        #modalDataset .split-button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
         }
     </style>
 </head>
@@ -558,7 +747,7 @@
                 </div>
             </div>
             <div class="filter-group">
-                <h4>データセット分割</h4>
+                <h3>データセット分割</h3>
                 <div class="filter-options" id="datasetFilters">
                     <div class="filter-option" data-value="train">Train</div>
                     <div class="filter-option" data-value="val">Val</div>
@@ -594,77 +783,85 @@
                 <h2>🏷️ ラベル編集</h2>
                 <button class="close" onclick="closeModal()">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="modal-image-container">
-                    <img id="modalImage" class="modal-image" src="" alt="">
-                    <div id="modalFilename" style="margin-top: 10px; font-weight: bold; color: #333;"></div>
+            <div class="modal-body modal-flex-body">
+                <!-- 左: 画像 -->
+                <div class="modal-image-side">
+                    <img id="modalImage" class="modal-image-large" src="" alt="">
+                    <div id="modalFilename" class="modal-filename-label"></div>
                 </div>
-                
-                <div class="modal-labels-section">
-                    <div class="modal-label-group">
-                        <h4>クラス</h4>
-                        <div class="modal-label-options" id="modalMainLabels">
-                            <div class="modal-label-option" data-value="nose">🐽 鼻あり</div>
+                <!-- 右: ラベル -->
+                <div class="modal-labels-side">
+                    <div class="modal-labels-section">
+                        <div class="modal-label-group">
+                            <h4>クラス</h4>
+                            <div class="modal-label-options" id="modalMainLabels">
+                                <div class="modal-label-option" data-value="nose">🐽 鼻あり</div>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>鼻の向き</h4>
-                        <div class="modal-label-options" id="modalOrientation">
-                            <div class="modal-label-option" data-value="front">正面</div>
-                            <div class="modal-label-option" data-value="side">横向き</div>
-                            <div class="modal-label-option" data-value="tilted">斜め</div>
+                        <!-- サブラベルカテゴリ名を上、選択肢を下に横並びで配置 -->
+                        <!-- filepath: /Users/masa/ghq/github.com/abe-masafumi/dog-nose-labeling-admin/templates/review.html -->
+                        <div class="modal-label-group compact-group">
+                            <div>
+                                <div class="modal-label-title">向き</div>
+                                <div class="modal-label-options" id="modalOrientation">
+                                    <div class="modal-label-option" data-value="front">正面</div>
+                                    <div class="modal-label-option" data-value="side">横向き</div>
+                                    <div class="modal-label-option" data-value="tilted">斜め</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="modal-label-title">鮮明判定</div>
+                                <div class="modal-label-options" id="modalClarity">
+                                    <div class="modal-label-option" data-value="clear">鮮明</div>
+                                    <div class="modal-label-option" data-value="blurred">ぼやけ</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="modal-label-title">色</div>
+                                <div class="modal-label-options" id="modalColor">
+                                    <div class="modal-label-option" data-value="black">黒</div>
+                                    <div class="modal-label-option" data-value="brown">茶色</div>
+                                    <div class="modal-label-option" data-value="gray">灰色</div>
+                                    <div class="modal-label-option" data-value="pink">ピンク</div>
+                                    <div class="modal-label-option" data-value="marble">マーブル</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="modal-label-title">大きさ</div>
+                                <div class="modal-label-options" id="modalSize">
+                                    <div class="modal-label-option" data-value="large">大きい</div>
+                                    <div class="modal-label-option" data-value="small">小さい</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="modal-label-title">毛色</div>
+                                <div class="modal-label-options" id="modalFur">
+                                    <div class="modal-label-option" data-value="light_fur">明るい毛色</div>
+                                    <div class="modal-label-option" data-value="dark_fur">暗い毛色</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="modal-label-title">鼻の長さ</div>
+                                <div class="modal-label-options" id="modalNoseLength">
+                                    <div class="modal-label-option" data-value="nose_long">長い</div>
+                                    <div class="modal-label-option" data-value="nose_medium">中</div>
+                                    <div class="modal-label-option" data-value="nose_short">短い</div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>鮮明判定</h4>
-                        <div class="modal-label-options" id="modalClarity">
-                            <div class="modal-label-option" data-value="clear">鮮明</div>
-                            <div class="modal-label-option" data-value="blurred">ぼやけ</div>
-                        </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>鼻の色</h4>
-                        <div class="modal-label-options" id="modalColor">
-                            <div class="modal-label-option" data-value="black">黒</div>
-                            <div class="modal-label-option" data-value="brown">茶色</div>
-                            <div class="modal-label-option" data-value="gray">灰色</div>
-                            <div class="modal-label-option" data-value="pink">ピンク</div>
-                            <div class="modal-label-option" data-value="marble">マーブル</div>
-                        </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>鼻の大きさ</h4>
-                        <div class="modal-label-options" id="modalSize">
-                            <div class="modal-label-option" data-value="large">大きい</div>
-                            <div class="modal-label-option" data-value="small">小さい</div>
-                        </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>毛色</h4>
-                        <div class="modal-label-options" id="modalFur">
-                            <div class="modal-label-option" data-value="light_fur">明るい毛色</div>
-                            <div class="modal-label-option" data-value="dark_fur">暗い毛色</div>
-                        </div>
-                    </div>
-
-                    <div class="modal-label-group">
-                        <h4>データセット分割</h4>
+                    <div class="dataset-split">
+                        <h3>データセット分割</h3>
                         <div class="modal-label-options" id="modalDataset">
-                            <div class="modal-label-option" data-value="train">Train</div>
-                            <div class="modal-label-option" data-value="val">Val</div>
-                            <div class="modal-label-option" data-value="test">Test</div>
+                            <div class="modal-label-option split-button" data-value="train">Train</div>
+                            <div class="modal-label-option split-button" data-value="val">Val</div>
+                            <div class="modal-label-option split-button" data-value="test">Test</div>
                         </div>
                     </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button class="modal-cancel-btn" onclick="closeModal()">キャンセル</button>
-                    <button class="modal-save-btn" onclick="saveModalLabels()">💾 保存</button>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="modal-cancel-btn" onclick="closeModal()">キャンセル</button>
+                        <button class="modal-save-btn" onclick="saveModalLabels()">💾 保存</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -713,6 +910,7 @@
             dark_fur: "暗い毛色",
             // 鼻の長さ
             nose_long: "鼻が長い",
+            nose_medium: "中",
             nose_short: "鼻が短い",
             // データセット分割
             train: "Train",
@@ -1023,7 +1221,7 @@
             }
         }
         
-        // --- モーダル内も同様に複数選択可に ---
+        // モーダル内サブラベルカテゴリごとに1つのみ選択可
         document.addEventListener('click', function(event) {
             if (event.target.classList.contains('modal-label-option')) {
                 const option = event.target;
@@ -1042,18 +1240,28 @@
                 } else if (parentId === 'modalDataset') {
                     parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
                     if (modalLabels.datasetSplit === value) {
-                        modalLabels.datasetSplit = null;
+                        modalLabels.datasetSplit = null; // 再クリックで解除
                     } else {
                         option.classList.add('active');
-                        modalLabels.datasetSplit = value;
-                    }
-                } else {
-                    // サブラベルはカテゴリ問わず複数選択可
-                    option.classList.toggle('active');
-                    const index = modalLabels.subLabels.indexOf(value);
-                    if (index > -1) {
-                        modalLabels.subLabels.splice(index, 1);
-                    } else {
+                            modalLabels.datasetSplit = value;
+                        }
+                } else if (
+                    ['modalOrientation','modalClarity','modalColor','modalSize','modalFur', 'modalNoseLength'].includes(parentId)
+                ) {
+                    // サブラベルカテゴリごとに単一選択
+                    parent.querySelectorAll('.modal-label-option').forEach(opt => opt.classList.remove('active'));
+                    // 既存の同カテゴリ値をmodalLabels.subLabelsから除去
+                    const groupLabels = {
+                        modalOrientation: ['front', 'side', 'tilted'],
+                        modalClarity: ['clear', 'blurred'],
+                        modalColor: ['black', 'brown', 'gray', 'pink', 'marble'],
+                        modalSize: ['large', 'small'],
+                        modalFur: ['light_fur', 'dark_fur'],
+                        modalNoseLength: ['nose_long', 'nose_medium', 'nose_short']
+                    };
+                    modalLabels.subLabels = modalLabels.subLabels.filter(l => !groupLabels[parentId].includes(l));
+                    if (!option.classList.contains('active')) {
+                        option.classList.add('active');
                         modalLabels.subLabels.push(value);
                     }
                 }

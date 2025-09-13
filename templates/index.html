@@ -1476,15 +1476,24 @@
 
         // データセット分割設定
         function setDatasetSplit(split) {
-            currentDatasetSplit = split;
+            if (currentDatasetSplit === split) {
+                // すでに選択されている場合は解除
+                currentDatasetSplit = null;
+            } else {
+                currentDatasetSplit = split;
+            }
             updateUI();
         }
 
         // ラベル保存
         async function saveLabel() {
-            
             const image = images[currentImageIndex];
-            let bbox = window.currentBbox || null;
+            // ここを修正
+            let bbox = window.currentBbox;
+            if (!bbox && image && image.bbox) {
+                // 既存のbboxがあればそれを使う
+                bbox = typeof image.bbox === 'string' ? JSON.parse(image.bbox) : image.bbox;
+            }
             const data = {
                 image_path: image.filepath,
                 main_label: currentMainLabel,
