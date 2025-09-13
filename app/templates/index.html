@@ -596,45 +596,11 @@
     </div>
 
     <script>
-        // この画像だけデータセットZIPエクスポート
-        async function exportCurrentImageDataset() {
-            if (!images || images.length === 0) {
-                alert('画像がありません');
-                return;
-            }
-            const image = images[currentImageIndex];
-            if (!image || !image.id) {
-                alert('画像情報が取得できません');
-                return;
-            }
-            const btn = document.querySelector('.export-button[onclick="exportCurrentImageDataset()"]');
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = 'エクスポート中...';
-            }
-            try {
-                const res = await fetch(`/api/export_single/${image.id}`);
-                if (!res.ok) throw new Error('エクスポートに失敗しました');
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${image.filename.replace(/\.[^.]+$/, '')}_dataset.zip`;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => {
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                }, 100);
-            } catch (e) {
-                alert('エクスポートに失敗しました');
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = 'この画像だけデータセットZIP';
-                }
-            }
-        }
+        const initialImages = {{ images|tojson }};
+        let images = initialImages;
+        let currentImageIndex = 0;
+        console.log('Initial images:', images);
+
         // --- 元画像サイズ編集モーダル ---
         let originalModal = null;
         let originalModalContent = null;
@@ -874,8 +840,6 @@
             }
         }
 
-        let images = [];
-        let currentImageIndex = 0;
         let currentMainLabel = null;
         let currentSubLabels = [];
         let currentDatasetSplit = null;
@@ -883,9 +847,7 @@
         // 初期化
         async function init() {
             try {
-                const response = await fetch('/api/images');
-                images = await response.json();
-                if (images.length === 0) {
+                if (!images || images.length === 0) {
                     document.getElementById('imageContainer').innerHTML = 
                         '<div class="no-images">imagesフォルダに画像ファイルを配置してください</div>';
                     return;
@@ -929,7 +891,8 @@
                 if (loadingDiv) loadingDiv.style.display = 'none';
                 wrapper.innerHTML = '';
                 const img = document.createElement('img');
-                img.src = `/images/${image.filename}`;
+
+                img.src = image.filepath;
                 img.alt = image.filename;
                 img.className = 'image-display';
                 img.style.display = 'block';
@@ -1353,7 +1316,8 @@
             
             // 現在のラベル状態を復元
             currentMainLabel = image.main_label;
-            currentSubLabels = image.sub_labels ? JSON.parse(image.sub_labels) : [];
+            currentSubLabels = image.sub_labels || [];
+
             currentDatasetSplit = image.dataset_split;
             
             updateUI();
@@ -1504,12 +1468,13 @@
                 
                 if (response.ok) {
                     // 最新データを取得して反映
-                    const imageId = images[currentImageIndex].id;
-                    const res2 = await fetch(`/api/images/${imageId}`);
-                    if (res2.ok) {
-                        const updated = await res2.json();
-                        images[currentImageIndex] = updated;
-                    }
+                    // const imageId = images[currentImageIndex].id;
+                    // const res2 = await fetch(`/api/images/${imageId}`);
+                    // if (res2.ok) {
+                    //     const updated = await res2.json();
+                    //     images[currentImageIndex] = updated;
+                    //     loadImage(currentImageIndex);  // ★ 再描画
+                    // }
                     // 次の画像に移動
                     if (currentImageIndex < images.length - 1) {
                         nextImage();
@@ -1776,11 +1741,11 @@
                 if (response.ok) {
                     displayExecuteResult(result);
                     
-                    if (images.length > 0) {
-                        const response = await fetch('/api/images');
-                        images = await response.json();
-                        loadImage(currentImageIndex);
-                    }
+                    // if (images.length > 0) {
+                    //     const response = await fetch('/api/images');
+                    //     images = await response.json();
+                    //     loadImage(currentImageIndex);
+                    // }
                 } else {
                     alert(result.error || '自動分割に失敗しました');
                 }
@@ -1808,5 +1773,8 @@
         // 初期化実行
         init();
     </script>
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+
+
 </body>
 </html>
