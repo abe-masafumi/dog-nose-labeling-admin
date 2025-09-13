@@ -173,6 +173,17 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    # 自動データセット分割の設定保存用（履歴テーブル：実行ごとに新規行を追加）
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS auto_split_settings (
+            id INTEGER PRIMARY KEY,
+            train_percent REAL NOT NULL,
+            val_percent REAL NOT NULL,
+            test_percent REAL NOT NULL,
+            targets TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     
     conn.commit()
     conn.close()
@@ -458,97 +469,324 @@ def filter_images():
 
 @app.route('/api/auto-split', methods=['POST'])
 def auto_split_dataset():
-    """自動データセット分割（基本モード）"""
+    """自動データセット分割（詳細ターゲット対応）"""
     data = request.json
     preview_only = data.get('preview_only', False)
-    
-    train_percent = data.get('train_percent', 80)
-    val_percent = data.get('val_percent', 10) 
-    test_percent = data.get('test_percent', 10)
-    
+
+    train_percent = float(data.get('train_percent', 80))
+    val_percent = float(data.get('val_percent', 10))
+    test_percent = float(data.get('test_percent', 10))
+    targets = data.get('targets', {}) or {}
+
     total = train_percent + val_percent + test_percent
     if abs(total - 100) > 0.01:
         return jsonify({'error': f'割合の合計が100%になりません: {total}%'}), 400
-    
+
     if train_percent < 0 or val_percent < 0 or test_percent < 0:
         return jsonify({'error': '割合は0以上で入力してください'}), 400
-    
+
     conn = sqlite3.connect('labels.db')
     cursor = conn.cursor()
-    
+
+    # 設定保存は「実行時（preview_only=False）」にのみ行う
+
+    # クラス設定済み（main_label が null/空でない）を対象に取得
     cursor.execute('''
-        SELECT i.id, i.filepath, l.main_label, l.dataset_split
+        SELECT i.id, i.filepath, l.main_label, l.sub_labels, l.dataset_split
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
-        WHERE l.is_completed = 1
+        WHERE l.main_label IS NOT NULL AND l.main_label != ''
         ORDER BY i.id
     ''')
-    
-    completed_images = cursor.fetchall()
-    
-    if not completed_images:
+
+    rows = cursor.fetchall()
+    if not rows:
         conn.close()
         return jsonify({'error': '作業済みの画像がありません'}), 400
-    
-    shuffled_images = list(completed_images)
-    
-    shuffled_images = list(completed_images)
-    random.shuffle(shuffled_images)
-    
-    total_count = len(shuffled_images)
-    train_count = int(total_count * train_percent / 100)
-    val_count = int(total_count * val_percent / 100)
-    test_count = total_count - train_count - val_count
-    
-    train_images = shuffled_images[:train_count]
-    val_images = shuffled_images[train_count:train_count + val_count]
-    test_images = shuffled_images[train_count + val_count:]
-    
+
+    # 画像プール準備
+    pool = []
+    for image_id, filepath, main_label, sub_labels_json, current_split in rows:
+        try:
+            sub_labels = json.loads(sub_labels_json) if sub_labels_json else []
+        except Exception:
+            sub_labels = []
+        pool.append({
+            'id': image_id,
+            'filepath': filepath,
+            'main_label': main_label,
+            'sub_labels': sub_labels,
+        })
+
+    total_count = len(pool)
+    # 元のシンプル分割（ターゲット未指定時）に後方互換
+    if not any(isinstance(v, dict) and v for v in targets.values()):
+        rng = list(pool)
+        random.shuffle(rng)
+        train_count = int(total_count * train_percent / 100)
+        val_count = int(total_count * val_percent / 100)
+        test_count = total_count - train_count - val_count
+
+        train_images = rng[:train_count]
+        val_images = rng[train_count:train_count + val_count]
+        test_images = rng[train_count + val_count:]
+
+        result = {
+            'total_images': total_count,
+            'train_count': len(train_images),
+            'val_count': len(val_images),
+            'test_count': len(test_images),
+            'train_percent_actual': round(len(train_images) / total_count * 100, 1),
+            'val_percent_actual': round(len(val_images) / total_count * 100, 1),
+            'test_percent_actual': round(len(test_images) / total_count * 100, 1)
+        }
+
+        if preview_only:
+            conn.close()
+            return jsonify(result)
+
+        try:
+            for item in train_images:
+                cursor.execute("UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+            for item in val_images:
+                cursor.execute("UPDATE labels SET dataset_split = 'val', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+            for item in test_images:
+                cursor.execute("UPDATE labels SET dataset_split = 'test', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+            # 実行成功時のみ設定を新規保存（履歴追加）
+            cursor.execute('''
+                INSERT INTO auto_split_settings (train_percent, val_percent, test_percent, targets, updated_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ''', (train_percent, val_percent, test_percent, json.dumps(targets)))
+            conn.commit()
+            result['success'] = True
+            result['message'] = 'データセット分割が完了しました'
+        except Exception as e:
+            conn.rollback()
+            result['error'] = f'データベース更新エラー: {str(e)}'
+            return jsonify(result), 500
+        finally:
+            conn.close()
+        return jsonify(result)
+
+    # 詳細ターゲットあり：貪欲割当
+    splits = ['train', 'val', 'test']
+    split_perc = {
+        'train': train_percent,
+        'val': val_percent,
+        'test': test_percent,
+    }
+    split_targets_counts = {s: int(total_count * split_perc[s] / 100) for s in splits}
+
+    # 属性マップと判定関数
+    attribute_order = ['orientation', 'clarity', 'color', 'size', 'fur', 'nose_length', 'main_label']
+
+    def matches(item, attr, val):
+        if attr == 'main_label':
+            ml = item.get('main_label')
+            if val == 'none':
+                return (ml is None) or (ml == '') or (ml == 'none')
+            return (val == ml)
+        # sub_labels に含まれるかで判定
+        return val in (item.get('sub_labels') or [])
+
+    # 割当結果
+    assignments = {s: [] for s in splits}
+    # 現在のカバレッジ集計
+    coverage = {s: {attr: {} for attr in attribute_order} for s in splits}
+
+    # 乱択順
+    unassigned = list(pool)
+    random.shuffle(unassigned)
+
+    # 各 split でターゲットを満たすように追加
+    for s in splits:
+        target_total = split_targets_counts[s]
+        # まずは指定された属性ターゲットを順に満たす
+        for attr in attribute_order:
+            attr_targets = (targets.get(attr) or {})
+            # 値ごとのパーセンテージ取得
+            for val, conf in attr_targets.items():
+                try:
+                    percent = float((conf or {}).get(s, 0) or 0)
+                except Exception:
+                    percent = 0
+                if percent <= 0:
+                    continue
+                required = int(target_total * percent / 100)
+                # すでに割当済みの該当数
+                current = coverage[s][attr].get(val, 0)
+                need = max(0, required - current)
+                if need <= 0:
+                    continue
+                # 未割当から条件に合うものを取得
+                picked = []
+                remain = []
+                for item in unassigned:
+                    if len(picked) < need and matches(item, attr, val):
+                        picked.append(item)
+                    else:
+                        remain.append(item)
+                unassigned = remain
+                assignments[s].extend(picked)
+                # カバレッジは最終集計時に assignments から一括で更新する（途中での二重加算を避ける）
+                # split の総数を超えないように調整
+                if len(assignments[s]) >= target_total:
+                    break
+            if len(assignments[s]) >= target_total:
+                break
+        # 余りを埋める（ターゲット未指定 or 充足後の残り）
+        remain_needed = max(0, target_total - len(assignments[s]))
+        if remain_needed > 0 and unassigned:
+            take = unassigned[:remain_needed]
+            assignments[s].extend(take)
+            unassigned = unassigned[remain_needed:]
+        # カバレッジを assignments から一括更新（main_label と、targets に指定があるサブラベルのみ）
+        for item in assignments[s]:
+            ml = item.get('main_label')
+            coverage[s]['main_label'][ml] = coverage[s]['main_label'].get(ml, 0) + 1
+            for attr in ['orientation', 'clarity', 'color', 'size', 'fur', 'nose_length']:
+                attr_values = targets.get(attr)
+                if not attr_values:
+                    continue
+                for lbl in (item.get('sub_labels') or []):
+                    if lbl in attr_values:
+                        coverage[s][attr][lbl] = coverage[s][attr].get(lbl, 0) + 1
+
+    train_images = assignments['train']
+    val_images = assignments['val']
+    test_images = assignments['test']
+
     result = {
         'total_images': total_count,
         'train_count': len(train_images),
-        'val_count': len(val_images), 
+        'val_count': len(val_images),
         'test_count': len(test_images),
-        'train_percent_actual': round(len(train_images) / total_count * 100, 1),
-        'val_percent_actual': round(len(val_images) / total_count * 100, 1),
-        'test_percent_actual': round(len(test_images) / total_count * 100, 1)
+        'train_percent_actual': round(len(train_images) / total_count * 100, 1) if total_count else 0,
+        'val_percent_actual': round(len(val_images) / total_count * 100, 1) if total_count else 0,
+        'test_percent_actual': round(len(test_images) / total_count * 100, 1) if total_count else 0,
+        'details': {
+            s: {
+                attr: {
+                    'actual_counts': coverage[s][attr],
+                    'required_counts': {
+                        val: int(split_targets_counts[s] * float(((targets.get(attr) or {}).get(val) or {}).get(s, 0) or 0) / 100)
+                        for val in (targets.get(attr) or {}).keys()
+                    }
+                } for attr in attribute_order if targets.get(attr)
+            } for s in splits
+        }
     }
-    
+
     if preview_only:
         conn.close()
         return jsonify(result)
-    
+
+    # 実更新
     try:
-        for image_id, filepath, main_label, current_split in train_images:
-            cursor.execute('''
-                UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP
-                WHERE image_path = ?
-            ''', (filepath,))
-        
-        for image_id, filepath, main_label, current_split in val_images:
-            cursor.execute('''
-                UPDATE labels SET dataset_split = 'val', updated_at = CURRENT_TIMESTAMP
-                WHERE image_path = ?
-            ''', (filepath,))
-        
-        for image_id, filepath, main_label, current_split in test_images:
-            cursor.execute('''
-                UPDATE labels SET dataset_split = 'test', updated_at = CURRENT_TIMESTAMP
-                WHERE image_path = ?
-            ''', (filepath,))
-        
+        for item in train_images:
+            cursor.execute("UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+        for item in val_images:
+            cursor.execute("UPDATE labels SET dataset_split = 'val', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+        for item in test_images:
+            cursor.execute("UPDATE labels SET dataset_split = 'test', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+        # 実行成功時のみ設定を新規保存（履歴追加）
+        cursor.execute('''
+            INSERT INTO auto_split_settings (train_percent, val_percent, test_percent, targets, updated_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (train_percent, val_percent, test_percent, json.dumps(targets)))
         conn.commit()
         result['success'] = True
-        result['message'] = 'データセット分割が完了しました'
-        
+        result['message'] = 'データセット分割が完了しました（詳細ターゲット反映）'
     except Exception as e:
         conn.rollback()
         result['error'] = f'データベース更新エラー: {str(e)}'
         return jsonify(result), 500
     finally:
         conn.close()
-    
+
     return jsonify(result)
+
+
+@app.route('/api/auto-split/settings', methods=['GET'])
+def get_auto_split_settings():
+    """保存済みの自動分割設定を返す（無ければデフォルト）"""
+    conn = sqlite3.connect('labels.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT train_percent, val_percent, test_percent, targets, updated_at FROM auto_split_settings ORDER BY updated_at DESC, id DESC LIMIT 1')
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return jsonify({
+            'train_percent': 80.0,
+            'val_percent': 10.0,
+            'test_percent': 10.0,
+            'targets': {},
+            'updated_at': None
+        })
+    train_percent, val_percent, test_percent, targets_text, updated_at = row
+    try:
+        targets = json.loads(targets_text) if targets_text else {}
+    except Exception:
+        targets = {}
+    return jsonify({
+        'train_percent': train_percent,
+        'val_percent': val_percent,
+        'test_percent': test_percent,
+        'targets': targets,
+        'updated_at': updated_at
+    })
+
+
+@app.route('/api/auto-split/settings', methods=['POST'])
+def save_auto_split_settings():
+    """自動分割設定を保存（部分更新可・上書き保存）
+    注意: 現仕様では UI は最新の実行結果のみ表示するため GET のみ使用。
+    本POSTは互換用に残置（必要なら手動で設定を差し替え可能）。
+    """
+    data = request.json or {}
+    conn = sqlite3.connect('labels.db')
+    cursor = conn.cursor()
+    # 現在値を取得
+    cursor.execute('SELECT train_percent, val_percent, test_percent, targets FROM auto_split_settings WHERE id = 1')
+    row = cursor.fetchone()
+    if row:
+        cur_train, cur_val, cur_test, cur_targets = row
+        try:
+            cur_targets = json.loads(cur_targets) if cur_targets else {}
+        except Exception:
+            cur_targets = {}
+    else:
+        cur_train, cur_val, cur_test, cur_targets = 80.0, 10.0, 10.0, {}
+
+    # 入力をマージ（与えられたもののみ上書き）
+    train_percent = float(data.get('train_percent', cur_train)) if data.get('train_percent') is not None else cur_train
+    val_percent = float(data.get('val_percent', cur_val)) if data.get('val_percent') is not None else cur_val
+    test_percent = float(data.get('test_percent', cur_test)) if data.get('test_percent') is not None else cur_test
+    new_targets = data.get('targets', None)
+    if new_targets is None:
+        merged_targets = cur_targets
+    else:
+        # 完全置換（部分マージを望む場合はここでディープマージへ変更可）
+        merged_targets = new_targets
+
+    try:
+        cursor.execute('''
+            INSERT INTO auto_split_settings (id, train_percent, val_percent, test_percent, targets, updated_at)
+            VALUES (1, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(id) DO UPDATE SET
+                train_percent=excluded.train_percent,
+                val_percent=excluded.val_percent,
+                test_percent=excluded.test_percent,
+                targets=excluded.targets,
+                updated_at=CURRENT_TIMESTAMP
+        ''', (train_percent, val_percent, test_percent, json.dumps(merged_targets)))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': f'設定保存エラー: {str(e)}'}), 500
+    conn.close()
+    return jsonify({'success': True})
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):

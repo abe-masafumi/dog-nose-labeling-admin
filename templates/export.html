@@ -90,6 +90,7 @@
 			display: flex;
 			gap: 10px;
 			flex-wrap: wrap;
+			margin-top: 12px; /* 上に余白を追加 */
 		}
 		.preview-button, .auto-split-button {
 			padding: 10px 20px;
@@ -98,6 +99,7 @@
 			cursor: pointer;
 			font-size: 14px;
 			font-weight: bold;
+			margin-top: 8px; /* 各ボタン個別にも上余白を付与 */
 		}
 		.preview-button {
 			background-color: #2196F3;
@@ -152,6 +154,64 @@
 			color: #666;
 			margin-top: 5px;
 		}
+
+		/* --- Table styles for preview --- */
+		.table-wrap {
+			margin-top: 12px;
+			overflow-x: auto;
+		}
+		table.preview-table {
+			width: 100%;
+			border-collapse: collapse;
+			background: #fff;
+			border: 1px solid #e5e7eb;
+			border-radius: 6px;
+			overflow: hidden;
+		}
+		.preview-table caption {
+			text-align: left;
+			font-weight: 700;
+			padding: 10px 12px;
+			background: #f3f4f6;
+			border-bottom: 1px solid #e5e7eb;
+		}
+		.preview-table th, .preview-table td {
+			padding: 8px 10px;
+			border-bottom: 1px solid #f0f0f0;
+			text-align: center;
+			font-size: 13px;
+			white-space: nowrap;
+		}
+		.preview-table th:first-child, .preview-table td:first-child {
+			text-align: left;
+		}
+		.preview-table thead th {
+			background: #fafafa;
+			color: #374151;
+			font-weight: 700;
+		}
+		.preview-table tbody tr:nth-child(odd) {
+			background: #fcfcfc;
+		}
+		.cell-ok {
+			background: #e8f5e9;
+			color: #1b5e20;
+			font-weight: 600;
+			border-radius: 4px;
+		}
+		.cell-need {
+			background: #ffebee;
+			color: #b71c1c;
+			font-weight: 600;
+			border-radius: 4px;
+		}
+		.cell-extra {
+			background: #fff8e1;
+			color: #e65100;
+			font-weight: 600;
+			border-radius: 4px;
+		}
+		.cell-muted { color: #9ca3af; }
 	</style>
 </head>
 <body>
@@ -178,6 +238,168 @@
 						<input type="number" id="testPercent" value="10" min="0" max="100" step="0.1">
 					</div>
 				</div>
+				<!-- 詳細ターゲットの設定 -->
+				<div style="margin-top:12px; background:#fff; border:1px solid #ddd; border-radius:6px; padding:12px;">
+					<h4 style="margin-bottom:8px;">⚙️ 詳細ターゲット（任意）</h4>
+					<p style="font-size:12px; color:#666; margin-bottom:8px;">各Splitに含めたい割合(%)を属性ごとに設定できます。未入力は無視されます。</p>
+					<div id="targetControls" style="display:grid; grid-template-columns: 1fr; gap:10px;">
+						<!-- クラス（鼻あり/鼻なし） -->
+						<div>
+							<div style="font-weight:600; margin-bottom:6px;">クラス</div>
+							<div style="display:grid; grid-template-columns: auto 1fr; gap:8px; align-items:center;">
+								<label>鼻あり</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_main_label_nose_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_main_label_nose_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_main_label_nose_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>鼻なし</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_main_label_none_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_main_label_none_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_main_label_none_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+							</div>
+						</div>
+						<!-- 向き -->
+						<div>
+							<div style="font-weight:600; margin-bottom:6px;">向き</div>
+							<div style="display:grid; grid-template-columns: auto 1fr; gap:8px; align-items:center;">
+								<label>正面</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_orientation_front_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_orientation_front_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_orientation_front_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>横向き</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_orientation_side_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_orientation_side_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_orientation_side_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>斜め</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_orientation_tilted_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_orientation_tilted_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_orientation_tilted_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+							</div>
+						</div>
+						<!-- 鮮明判定 -->
+						<div>
+							<div style="font-weight:600; margin-bottom:6px;">鮮明判定</div>
+							<div style="display:grid; grid-template-columns: auto 1fr; gap:8px; align-items:center;">
+								<label>鮮明</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_clarity_clear_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_clarity_clear_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_clarity_clear_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>ぼやけ</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_clarity_blurred_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_clarity_blurred_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_clarity_blurred_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+							</div>
+						</div>
+						<!-- 鼻の色 -->
+						<div>
+							<div style="font-weight:600; margin-bottom:6px;">鼻の色</div>
+							<div style="display:grid; grid-template-columns: auto 1fr; gap:8px; align-items:center;">
+								<label>黒</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_color_black_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_color_black_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_color_black_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>茶色</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_color_brown_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_color_brown_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_color_brown_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>灰色</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_color_gray_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_color_gray_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_color_gray_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>ピンク</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_color_pink_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_color_pink_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_color_pink_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+
+								<label>マーブル</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_color_marble_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_color_marble_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_color_marble_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+							</div>
+						</div>
+						<!-- 他の属性（大きさ・毛色・鼻の長さ）は省略せず同様に定義 -->
+						<div>
+							<div style="font-weight:600; margin-bottom:6px;">鼻の大きさ</div>
+							<div style="display:grid; grid-template-columns: auto 1fr; gap:8px; align-items:center;">
+								<label>大きい</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_size_large_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_size_large_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_size_large_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>小さい</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_size_small_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_size_small_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_size_small_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+							</div>
+						</div>
+						<div>
+							<div style="font-weight:600; margin-bottom:6px;">毛色</div>
+							<div style="display:grid; grid-template-columns: auto 1fr; gap:8px; align-items:center;">
+								<label>明るい毛色</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_fur_light_fur_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_fur_light_fur_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_fur_light_fur_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>暗い毛色</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_fur_dark_fur_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_fur_dark_fur_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_fur_dark_fur_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+							</div>
+						</div>
+						<div>
+							<div style="font-weight:600; margin-bottom:6px;">鼻の長さ</div>
+							<div style="display:grid; grid-template-columns: auto 1fr; gap:8px; align-items:center;">
+								<label>長い</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_nose_length_nose_long_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_nose_length_nose_long_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_nose_length_nose_long_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>中</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_nose_length_nose_medium_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_nose_length_nose_medium_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_nose_length_nose_medium_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+								<label>短い</label>
+								<div style="display:flex; gap:8px;">
+									<input type="number" id="t_nose_length_nose_short_train" placeholder="Train%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_nose_length_nose_short_val" placeholder="Val%" min="0" max="100" step="0.1" style="width:90px;">
+									<input type="number" id="t_nose_length_nose_short_test" placeholder="Test%" min="0" max="100" step="0.1" style="width:90px;">
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
 				<div class="auto-split-buttons">
 					<button class="preview-button" onclick="previewAutoSplit()">📊 プレビュー</button>
 					<button class="auto-split-button" onclick="executeAutoSplit()">🎯 自動分割実行</button>
@@ -200,6 +422,69 @@
 		function exportCurrentImageDataset() {
 			alert('「この画像だけデータセットZIP」はラベリング画面でご利用ください。');
 		}
+		function applyTargetsToUI(targets) {
+			if (!targets) return;
+			const splits = ['train','val','test'];
+			Object.keys(targets).forEach(attr => {
+				const vals = targets[attr] || {};
+				Object.keys(vals).forEach(val => {
+					splits.forEach(s => {
+						const v = vals[val] && vals[val][s];
+						if (v === undefined || v === null) return;
+						const el = document.getElementById(`t_${attr}_${val}_${s}`);
+						if (el) el.value = v;
+					});
+				});
+			});
+		}
+		async function loadSavedAutoSplitSettings() {
+			try {
+				const res = await fetch('/api/auto-split/settings');
+				if (!res.ok) return;
+				const conf = await res.json();
+				document.getElementById('trainPercent').value = conf.train_percent ?? 80;
+				document.getElementById('valPercent').value = conf.val_percent ?? 10;
+				document.getElementById('testPercent').value = conf.test_percent ?? 10;
+				applyTargetsToUI(conf.targets || {});
+			} catch (e) {
+				console.warn('設定読込に失敗:', e);
+			}
+		}
+
+		function collectTargets() {
+			// id規約: t_{attr}_{value}_{split}
+			const attrs = ['main_label','orientation','clarity','color','size','fur','nose_length'];
+			const splits = ['train','val','test'];
+			const valuesMap = {
+				main_label: ['nose','none'],
+				orientation: ['front','side','tilted'],
+				clarity: ['clear','blurred'],
+				color: ['black','brown','gray','pink','marble'],
+				size: ['large','small'],
+				fur: ['light_fur','dark_fur'],
+				nose_length: ['nose_long','nose_medium','nose_short']
+			};
+			const targets = {};
+			attrs.forEach(attr => {
+				const vals = valuesMap[attr];
+				const conf = {};
+				vals.forEach(val => {
+					let any = false;
+					const perSplit = {};
+					splits.forEach(s => {
+						const el = document.getElementById(`t_${attr}_${val}_${s}`);
+						if (el && el.value !== '') {
+							perSplit[s] = parseFloat(el.value);
+							any = true;
+						}
+					});
+					if (any) conf[val] = perSplit;
+				});
+				if (Object.keys(conf).length > 0) targets[attr] = conf;
+			});
+			return targets;
+		}
+
 		async function previewAutoSplit() {
 			const trainPercent = parseFloat(document.getElementById('trainPercent').value);
 			const valPercent = parseFloat(document.getElementById('valPercent').value);
@@ -217,7 +502,8 @@
 				train_percent: trainPercent,
 				val_percent: valPercent,
 				test_percent: testPercent,
-				preview_only: true
+				preview_only: true,
+				targets: collectTargets()
 			};
 			const button = document.querySelector('.preview-button');
 			const originalText = button.textContent;
@@ -243,25 +529,116 @@
 				button.disabled = false;
 			}
 		}
+		// 日本語ラベル
+		const attrJa = {
+			orientation: '向き',
+			clarity: '鮮明判定',
+			color: '鼻の色',
+			size: '鼻の大きさ',
+			fur: '毛色',
+			nose_length: '鼻の長さ',
+			main_label: 'クラス'
+		};
+		const valJa = {
+			front: '正面', side: '横向き', tilted: '斜め',
+			clear: '鮮明', blurred: 'ぼやけ',
+			black: '黒', brown: '茶色', gray: '灰色', pink: 'ピンク', marble: 'マーブル',
+			large: '大きい', small: '小さい',
+			light_fur: '明るい毛色', dark_fur: '暗い毛色',
+			nose_long: '長い', nose_medium: '中', nose_short: '短い',
+			nose: '鼻あり', none: '鼻なし'
+		};
+		const toJa = (map, key) => map[key] || key;
+
+		function renderSummaryTable(result) {
+			const rows = [
+				{ key: 'TRAIN', count: result.train_count, percent: result.train_percent_actual },
+				{ key: 'VAL', count: result.val_count, percent: result.val_percent_actual },
+				{ key: 'TEST', count: result.test_count, percent: result.test_percent_actual },
+			];
+			return `
+			<div class="table-wrap">
+				<table class="preview-table">
+					<caption>分割サマリー</caption>
+					<thead>
+						<tr><th>Split</th><th>枚数</th><th>割合</th></tr>
+					</thead>
+					<tbody>
+						${rows.map(r => `<tr><td>${r.key}</td><td>${r.count}枚</td><td>${r.percent}%</td></tr>`).join('')}
+					</tbody>
+				</table>
+			</div>`;
+		}
+
+		function renderDetailsTables(details) {
+			if (!details) return '';
+			const splitOrder = ['train','val','test'];
+			const attrOrder = ['orientation','clarity','color','size','fur','nose_length','main_label'];
+			let html = '';
+			// ピボット: attr -> value -> split -> {act, req}
+			const pivot = {};
+			splitOrder.forEach(split => {
+				const attrs = details[split] || {};
+				Object.keys(attrs).forEach(attr => {
+					pivot[attr] = pivot[attr] || {};
+					const reqs = (attrs[attr] && attrs[attr].required_counts) || {};
+					const acts = (attrs[attr] && attrs[attr].actual_counts) || {};
+					const vals = new Set([...Object.keys(reqs), ...Object.keys(acts)]);
+					vals.forEach(v => {
+						pivot[attr][v] = pivot[attr][v] || {};
+						pivot[attr][v][split] = {
+							act: acts[v] || 0,
+							req: reqs[v] || 0
+						};
+					});
+				});
+			});
+			// 属性ごとにテーブルを描画
+			attrOrder.forEach(attr => {
+				if (!pivot[attr]) return;
+				const values = Object.keys(pivot[attr]);
+				if (values.length === 0) return;
+				html += `
+				<div class="table-wrap">
+					<table class="preview-table">
+						<caption>${toJa(attrJa, attr)}</caption>
+						<thead>
+							<tr>
+								<th>値</th>
+								<th>TRAIN</th>
+								<th>VAL</th>
+								<th>TEST</th>
+							</tr>
+						</thead>
+						<tbody>
+							${values.map(v => {
+								const cells = splitOrder.map(s => {
+									const rec = (pivot[attr][v] && pivot[attr][v][s]) || {act:0, req:0};
+									const label = `${rec.act}/${rec.req}`;
+									let cls = 'cell-muted';
+									if (rec.req > 0) {
+										cls = rec.act >= rec.req ? 'cell-ok' : 'cell-need';
+									} else if (rec.act > 0) {
+										cls = 'cell-extra';
+									}
+									return `<td class="${cls}">${label}</td>`;
+								}).join('');
+								return `<tr><td>${toJa(valJa, v)}</td>${cells}</tr>`;
+							}).join('')}
+						</tbody>
+					</table>
+				</div>`;
+			});
+			return html;
+		}
+
 		function displayPreviewResult(result) {
 			const previewDiv = document.getElementById('splitPreview');
 			previewDiv.innerHTML = `
 				<h4>📊 分割プレビュー</h4>
-					<p>クラス設定済み画像: <strong>${result.total_images}枚</strong></p>
-				<div class="preview-stats">
-					<div class="stat-item">
-						<div class="stat-value">${result.train_count}枚</div>
-						<div class="stat-label">Train (${result.train_percent_actual}%)</div>
-					</div>
-					<div class="stat-item">
-						<div class="stat-value">${result.val_count}枚</div>
-						<div class="stat-label">Val (${result.val_percent_actual}%)</div>
-					</div>
-					<div class="stat-item">
-						<div class="stat-value">${result.test_count}枚</div>
-						<div class="stat-label">Test (${result.test_percent_actual}%)</div>
-					</div>
-				</div>
+				<p>クラス設定済み画像: <strong>${result.total_images}枚</strong></p>
+				${renderSummaryTable(result)}
+				${renderDetailsTables(result.details)}
 				<p style="margin-top: 15px; color: #666; font-size: 14px;">
 					⚠️ 実行すると既存の分割設定は上書きされます
 				</p>
@@ -286,7 +663,8 @@
 				train_percent: trainPercent,
 				val_percent: valPercent,
 				test_percent: testPercent,
-				overwrite_existing: true
+				overwrite_existing: true,
+				targets: collectTargets()
 			};
 			const confirmMessage = `クラス設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
 			if (!confirm(confirmMessage)) {
@@ -325,6 +703,9 @@
 			resultDiv.style.display = 'block';
 			document.getElementById('splitPreview').style.display = 'none';
 		}
+				document.addEventListener('DOMContentLoaded', () => {
+					loadSavedAutoSplitSettings();
+				});
 		</script>
 	</div>
 </body>
