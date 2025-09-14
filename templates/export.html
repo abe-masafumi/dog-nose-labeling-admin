@@ -101,35 +101,23 @@
 			font-weight: bold;
 			margin-top: 8px; /* 各ボタン個別にも上余白を付与 */
 		}
-		.preview-button {
-			background-color: #2196F3;
-			color: white;
-		}
-		.preview-button:hover {
-			background-color: #1976D2;
-		}
-		.auto-split-button {
-			background-color: #4CAF50;
-			color: white;
-		}
-		.auto-split-button:hover {
-			background-color: #45a049;
-		}
-		.auto-split-button:disabled {
-			background-color: #cccccc;
-			cursor: not-allowed;
-		}
-		.split-preview, .split-result {
+		.preview-button { background-color: #2196F3; color: white; }
+		.preview-button:hover { background-color: #1976D2; }
+		.auto-split-button { background-color: #4CAF50; color: white; }
+		.auto-split-button:hover { background-color: #45a049; }
+
+		.split-preview {
 			margin-top: 15px;
 			padding: 15px;
 			border-radius: 5px;
 			background-color: white;
-			border: 1px solid #ddd;
-		}
-		.split-preview {
 			border-left: 4px solid #2196F3;
 		}
 		.split-result {
+			margin-top: 15px;
+			padding: 15px;
+			border-radius: 5px;
+			background-color: white;
 			border-left: 4px solid #4CAF50;
 		}
 		.preview-stats {
@@ -138,107 +126,52 @@
 			gap: 10px;
 			margin-top: 10px;
 		}
-		.stat-item {
-			text-align: center;
-			padding: 10px;
-			background-color: #f5f5f5;
-			border-radius: 4px;
-		}
-		.stat-value {
-			font-size: 18px;
-			font-weight: bold;
-			color: #333;
-		}
-		.stat-label {
-			font-size: 12px;
-			color: #666;
-			margin-top: 5px;
-		}
-
-		/* --- Table styles for preview --- */
-		.table-wrap {
-			margin-top: 12px;
-			overflow-x: auto;
-		}
-		table.preview-table {
-			width: 100%;
-			border-collapse: collapse;
-			background: #fff;
-			border: 1px solid #e5e7eb;
-			border-radius: 6px;
-			overflow: hidden;
-		}
-		.preview-table caption {
-			text-align: left;
-			font-weight: 700;
-			padding: 10px 12px;
-			background: #f3f4f6;
-			border-bottom: 1px solid #e5e7eb;
-		}
-		.preview-table th, .preview-table td {
-			padding: 8px 10px;
-			border-bottom: 1px solid #f0f0f0;
-			text-align: center;
-			font-size: 13px;
-			white-space: nowrap;
-		}
-		.preview-table th:first-child, .preview-table td:first-child {
-			text-align: left;
-		}
-		.preview-table thead th {
-			background: #fafafa;
-			color: #374151;
-			font-weight: 700;
-		}
-		.preview-table tbody tr:nth-child(odd) {
-			background: #fcfcfc;
-		}
-		.cell-ok {
-			background: #e8f5e9;
-			color: #1b5e20;
-			font-weight: 600;
-			border-radius: 4px;
-		}
-		.cell-need {
-			background: #ffebee;
-			color: #b71c1c;
-			font-weight: 600;
-			border-radius: 4px;
-		}
-		.cell-extra {
-			background: #fff8e1;
-			color: #e65100;
-			font-weight: 600;
-			border-radius: 4px;
-		}
-		.cell-muted { color: #9ca3af; }
+		.table-wrap { overflow-x: auto; margin-top: 10px; }
+		.preview-table { width: 100%; border-collapse: collapse; }
+		.preview-table caption { text-align: left; font-weight: 600; margin-bottom: 6px; }
+		.preview-table th, .preview-table td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; font-size: 13px; }
+		/* 詳細テーブルの列幅を固定して揃える */
+		.details-table { table-layout: fixed; width: 100%; }
+		.details-table .col-value { width: 30%; }
+		.details-table .col-split { width: 23.333%; }
+		.details-table th:first-child, .details-table td:first-child { text-align: left; }
+		.cell-ok { background: #e8f5e9; color: #2e7d32; font-weight: 600; }
+		.cell-need { background: #fff3e0; color: #ef6c00; font-weight: 600; }
+		.cell-extra { background: #e3f2fd; color: #1565c0; font-weight: 600; }
+		.cell-muted { color: #999; }
 	</style>
 </head>
 <body>
 	{% include 'header.html' with context %}
 	<div class="container" style="padding-top:80px;">
-		<div class="header">
-			<h1>📁 データエクスポート</h1>
-			<p>データセットのエクスポートや自動分割を行う画面です</p>
-		</div>
+		<!-- 自動データセット分割（比率入力） -->
 		<div class="auto-split-section">
-			<h2 style="text-align:center; margin-bottom:24px;">🎯 自動データセット分割</h2>
-			<div class="auto-split-controls">
-				<div class="percentage-inputs">
-					<div class="input-group">
-						<label for="trainPercent">Train (%)</label>
-						<input type="number" id="trainPercent" value="80" min="0" max="100" step="0.1">
-					</div>
-					<div class="input-group">
-						<label for="valPercent">Val (%)</label>
-						<input type="number" id="valPercent" value="10" min="0" max="100" step="0.1">
-					</div>
-					<div class="input-group">
-						<label for="testPercent">Test (%)</label>
-						<input type="number" id="testPercent" value="10" min="0" max="100" step="0.1">
-					</div>
+			<h2 style="margin-bottom: 12px;">🎯 自動データセット分割</h2>
+			<div class="percentage-inputs">
+				<div class="input-group">
+					<label for="trainPercent">Train (%)</label>
+					<input type="number" id="trainPercent" min="0" max="100" step="0.1" value="80">
 				</div>
-				<!-- 詳細ターゲットの設定 -->
+				<div class="input-group">
+					<label for="valPercent">Val (%)</label>
+					<input type="number" id="valPercent" min="0" max="100" step="0.1" value="10">
+				</div>
+				<div class="input-group">
+					<label for="testPercent">Test (%)</label>
+					<input type="number" id="testPercent" min="0" max="100" step="0.1" value="10">
+				</div>
+			</div>
+			<div id="splitEstimate" style="margin-top:8px; font-size:13px; color:#333; background:#fff; border:1px dashed #ccc; border-radius:6px; padding:8px; display:none;">
+				<div>対象枚数: <strong id="eligibleTotal">-</strong> 枚</div>
+				<div style="margin-top:6px; display:flex; gap:12px; flex-wrap:wrap;">
+					<span>Train 推定: <strong id="estTrain">-</strong> 枚</span>
+					<span>Val 推定: <strong id="estVal">-</strong> 枚</span>
+					<span>Test 推定: <strong id="estTest">-</strong> 枚</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- 詳細ターゲットの設定 -->
 				<div style="margin-top:12px; background:#fff; border:1px solid #ddd; border-radius:6px; padding:12px;">
 					<h4 style="margin-bottom:8px;">⚙️ 詳細ターゲット（任意）</h4>
 					<p style="font-size:12px; color:#666; margin-bottom:8px;">各Splitに含めたい割合(%)を属性ごとに設定できます。未入力は無視されます。</p>
@@ -399,14 +332,38 @@
 							</div>
 						</div>
 					</div>
-				</div>
-				<div class="auto-split-buttons">
-					<button class="preview-button" onclick="previewAutoSplit()">📊 プレビュー</button>
-					<button class="auto-split-button" onclick="executeAutoSplit()">🎯 自動分割実行</button>
+					<!-- プレビュー/実行ボタン（詳細ターゲット直下） -->
+					<div class="auto-split-buttons" style="margin-top: 16px;">
+						<div style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px; font-size:13px;">
+							<label style="display:flex; align-items:center; gap:8px;">
+								<input type="checkbox" id="preferTargetDistribution">
+								<span>指定ターゲットを重視して配分（比率は近似）</span>
+							</label>
+						</div>
+						<button class="preview-button" onclick="previewAutoSplit()">📊 プレビュー</button>
+						<button class="auto-split-button" onclick="executeAutoSplit()">🎯 自動分割実行</button>
+					</div>
 				</div>
 			</div>
 			<div id="splitPreview" class="split-preview" style="display: none;"></div>
 			<div id="splitResult" class="split-result" style="display: none;"></div>
+			<!-- 表記/色のルール（小さく表示） -->
+			<div id="notationLegend" style="margin-top:10px; font-size:12px; color:#666; background:#fff; border:1px dashed #ddd; border-radius:6px; padding:10px;">
+				<div style="font-weight:600; margin-bottom:4px;">表記ルール</div>
+				<ul style="margin-left:18px;">
+					<li>表記（例: <strong>40/25</strong>）</li>
+					<li>左側（40）: 実績枚数 = そのSplitに実際に割り当てられた枚数</li>
+					<li>右側（25）: 目標枚数 = 入力した割合(%)から算出した要求枚数</li>
+					<li>算出は「そのSplitの目標合計枚数 × 指定割合(%) / 100」をベースに、端数はハミルトン法で按分</li>
+				</ul>
+				<div style="font-weight:600; margin:8px 0 4px;">色のルール</div>
+				<ul style="margin-left:18px;">
+					<li>緑: 実績が目標以上（達成）</li>
+					<li>オレンジ: 目標 &gt; 0 かつ 実績 &lt; 目標（不足）</li>
+					<li>青: 目標 = 0 だが 実績 &gt; 0（指定外だが含まれる）</li>
+					<li>グレー: 目標 = 0 かつ 実績 = 0（対象なし）</li>
+				</ul>
+			</div>
 		</div>
 		<div class="export-section" style="max-width:500px; margin:40px auto 0; background:#fff; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.07); padding:32px 24px;">
 			<h2 style="text-align:center; margin-bottom:24px;">📁 データエクスポート</h2>
@@ -416,23 +373,65 @@
 			<div style="margin-top:24px; text-align:center; color:#888; font-size:13px;">※「この画像だけデータセットZIP」はラベリング画面でのみ有効です</div>
 		</div>
 		<script>
-		function exportDataset() {
-			window.open('/api/export/dataset', '_blank');
-		}
-		function exportCurrentImageDataset() {
-			alert('「この画像だけデータセットZIP」はラベリング画面でご利用ください。');
-		}
+		// ==========================
+		// 定数・ユーティリティ
+		// ==========================
+		const SPLITS = ['train', 'val', 'test'];
+		const ATTRIBUTE_KEYS = ['main_label','orientation','clarity','color','size','fur','nose_length'];
+		const VALUE_KEYS_BY_ATTR = {
+			main_label: ['nose','none'],
+			orientation: ['front','side','tilted'],
+			clarity: ['clear','blurred'],
+			color: ['black','brown','gray','pink','marble'],
+			size: ['large','small'],
+			fur: ['light_fur','dark_fur'],
+			nose_length: ['nose_long','nose_medium','nose_short']
+		};
+		const DEFAULT_TRAIN = 80;
+		const DEFAULT_VAL = 10;
+		const DEFAULT_TEST = 10;
+		const PERCENT_TOTAL = 100;
+		const FLOAT_TOLERANCE = 0.01;
+		const ATTR_LABELS_JA = {
+			orientation: '向き',
+			clarity: '鮮明判定',
+			color: '鼻の色',
+			size: '鼻の大きさ',
+			fur: '毛色',
+			nose_length: '鼻の長さ',
+			main_label: 'クラス'
+		};
+		const VALUE_LABELS_JA = {
+			front: '正面', side: '横向き', tilted: '斜め',
+			clear: '鮮明', blurred: 'ぼやけ',
+			black: '黒', brown: '茶色', gray: '灰色', pink: 'ピンク', marble: 'マーブル',
+			large: '大きい', small: '小さい',
+			light_fur: '明るい毛色', dark_fur: '暗い毛色',
+			nose_long: '長い', nose_medium: '中', nose_short: '短い',
+			nose: '鼻あり', none: '鼻なし'
+		};
+		function translateLabel(map, key) { return map[key] || key; }
+		function qs(sel) { return document.querySelector(sel); }
+		function setInputValueIfExists(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
+		function getNumberInputValue(id) { const el = document.getElementById(id); return el ? parseFloat(el.value) : NaN; }
+
+		// 推定用の状態
+		let eligibleCount = null; // is_completed==1 の枚数
+
+		// エクスポート
+		function exportDataset() { window.open('/api/export/dataset', '_blank'); }
+		function exportCurrentImageDataset() { alert('「この画像だけデータセットZIP」はラベリング画面でご利用ください。'); }
+
+		// DBの最新設定をUIへ反映
 		function applyTargetsToUI(targets) {
 			if (!targets) return;
-			const splits = ['train','val','test'];
 			Object.keys(targets).forEach(attr => {
 				const vals = targets[attr] || {};
 				Object.keys(vals).forEach(val => {
-					splits.forEach(s => {
+					SPLITS.forEach(s => {
 						const v = vals[val] && vals[val][s];
 						if (v === undefined || v === null) return;
-						const el = document.getElementById(`t_${attr}_${val}_${s}`);
-						if (el) el.value = v;
+						setInputValueIfExists(`t_${attr}_${val}_${s}`, v);
 					});
 				});
 			});
@@ -442,141 +441,152 @@
 				const res = await fetch('/api/auto-split/settings');
 				if (!res.ok) return;
 				const conf = await res.json();
-				document.getElementById('trainPercent').value = conf.train_percent ?? 80;
-				document.getElementById('valPercent').value = conf.val_percent ?? 10;
-				document.getElementById('testPercent').value = conf.test_percent ?? 10;
+				setInputValueIfExists('trainPercent', conf.train_percent ?? DEFAULT_TRAIN);
+				setInputValueIfExists('valPercent', conf.val_percent ?? DEFAULT_VAL);
+				setInputValueIfExists('testPercent', conf.test_percent ?? DEFAULT_TEST);
 				applyTargetsToUI(conf.targets || {});
 			} catch (e) {
 				console.warn('設定読込に失敗:', e);
 			}
 		}
 
+		// 推定計算
+		function computeAndRenderEstimate() {
+			const wrap = document.getElementById('splitEstimate');
+			if (eligibleCount === null) { wrap.style.display = 'none'; return; }
+			const train = getNumberInputValue('trainPercent');
+			const val = getNumberInputValue('valPercent');
+			const test = getNumberInputValue('testPercent');
+			if ([train,val,test].some(v => Number.isNaN(v))) { wrap.style.display = 'none'; return; }
+			const totalPct = train + val + test;
+			if (Math.abs(totalPct - 100) > FLOAT_TOLERANCE || train < 0 || val < 0 || test < 0) { wrap.style.display = 'none'; return; }
+
+			// ハミルトン法で合計が一致する推定枚数
+			const exact = { train: eligibleCount * train / 100, val: eligibleCount * val / 100, test: eligibleCount * test / 100 };
+			const base = { train: Math.floor(exact.train), val: Math.floor(exact.val), test: Math.floor(exact.test) };
+			let assigned = base.train + base.val + base.test;
+			const remainders = [ ['train', exact.train - base.train], ['val', exact.val - base.val], ['test', exact.test - base.test] ].sort((a,b) => b[1]-a[1]);
+			let i = 0;
+			while (assigned < eligibleCount) { const s = remainders[i % remainders.length][0]; base[s] += 1; assigned += 1; i++; }
+
+			document.getElementById('eligibleTotal').textContent = eligibleCount;
+			document.getElementById('estTrain').textContent = base.train;
+			document.getElementById('estVal').textContent = base.val;
+			document.getElementById('estTest').textContent = base.test;
+			wrap.style.display = 'block';
+		}
+
+        // サマリーを同じロジックで計算
+        function computeCountsByHamilton(total, train, val, test) {
+            const exact = { train: total * train / 100, val: total * val / 100, test: total * test / 100 };
+            const base = { train: Math.floor(exact.train), val: Math.floor(exact.val), test: Math.floor(exact.test) };
+            let assigned = base.train + base.val + base.test;
+            const rema = [ ['train', exact.train - base.train], ['val', exact.val - base.val], ['test', exact.test - base.test] ].sort((a,b) => b[1]-a[1]);
+            let i = 0;
+            while (assigned < total) { const s = rema[i % rema.length][0]; base[s] += 1; assigned += 1; i++; }
+            return base;
+        }
+
+	async function loadEligibleCount() {
+			try {
+				const res = await fetch('/api/images');
+				const list = await res.json();
+		// 対象: is_completed が真のもの（1, '1', true, 'true'）
+		const toBool = v => v === 1 || v === '1' || v === true || v === 'true';
+		eligibleCount = (list || []).filter(x => toBool(x.is_completed)).length;
+			} catch (e) {
+				console.warn('対象枚数の取得に失敗:', e);
+				eligibleCount = null;
+			} finally {
+				computeAndRenderEstimate();
+			}
+		}
+
+		function wireEstimateEvents() {
+			['trainPercent','valPercent','testPercent'].forEach(id => {
+				const el = document.getElementById(id);
+				if (el) el.addEventListener('input', computeAndRenderEstimate);
+			});
+		}
+
+		// 入力収集・検証
 		function collectTargets() {
-			// id規約: t_{attr}_{value}_{split}
-			const attrs = ['main_label','orientation','clarity','color','size','fur','nose_length'];
-			const splits = ['train','val','test'];
-			const valuesMap = {
-				main_label: ['nose','none'],
-				orientation: ['front','side','tilted'],
-				clarity: ['clear','blurred'],
-				color: ['black','brown','gray','pink','marble'],
-				size: ['large','small'],
-				fur: ['light_fur','dark_fur'],
-				nose_length: ['nose_long','nose_medium','nose_short']
-			};
 			const targets = {};
-			attrs.forEach(attr => {
-				const vals = valuesMap[attr];
-				const conf = {};
-				vals.forEach(val => {
-					let any = false;
+			ATTRIBUTE_KEYS.forEach(attr => {
+				const values = VALUE_KEYS_BY_ATTR[attr];
+				const perAttr = {};
+				values.forEach(val => {
+					let hasAny = false;
 					const perSplit = {};
-					splits.forEach(s => {
+					SPLITS.forEach(s => {
 						const el = document.getElementById(`t_${attr}_${val}_${s}`);
 						if (el && el.value !== '') {
 							perSplit[s] = parseFloat(el.value);
-							any = true;
+							hasAny = true;
 						}
 					});
-					if (any) conf[val] = perSplit;
+					if (hasAny) perAttr[val] = perSplit;
 				});
-				if (Object.keys(conf).length > 0) targets[attr] = conf;
+				if (Object.keys(perAttr).length > 0) targets[attr] = perAttr;
 			});
 			return targets;
 		}
-
-		async function previewAutoSplit() {
-			const trainPercent = parseFloat(document.getElementById('trainPercent').value);
-			const valPercent = parseFloat(document.getElementById('valPercent').value);
-			const testPercent = parseFloat(document.getElementById('testPercent').value);
-			const total = trainPercent + valPercent + testPercent;
-			if (Math.abs(total - 100) > 0.01) {
-				alert(`割合の合計が100%になりません: ${total}%`);
-				return;
-			}
-			if (trainPercent < 0 || valPercent < 0 || testPercent < 0) {
-				alert('割合は0以上で入力してください');
-				return;
-			}
-			const requestData = {
-				train_percent: trainPercent,
-				val_percent: valPercent,
-				test_percent: testPercent,
-				preview_only: true,
-				targets: collectTargets()
-			};
-			const button = document.querySelector('.preview-button');
+		function getSplitPercents() { return { train: getNumberInputValue('trainPercent'), val: getNumberInputValue('valPercent'), test: getNumberInputValue('testPercent') }; }
+		function validateSplitPercents({ train, val, test }) {
+			const total = train + val + test;
+			if (Math.abs(total - PERCENT_TOTAL) > FLOAT_TOLERANCE) { alert(`割合の合計が100%になりません: ${total}%`); return false; }
+			if (train < 0 || val < 0 || test < 0) { alert('割合は0以上で入力してください'); return false; }
+			return true;
+		}
+		function buildAutoSplitRequest({ previewOnly, includeOverwriteFlag }) {
+			const { train, val, test } = getSplitPercents();
+			const body = { train_percent: train, val_percent: val, test_percent: test, preview_only: !!previewOnly, targets: collectTargets(),
+				prefer_target_distribution: !!document.getElementById('preferTargetDistribution')?.checked };
+			if (includeOverwriteFlag) body.overwrite_existing = true; // 後方互換
+			return body;
+		}
+	async function runAutoSplit({ buttonSelector, loadingText, requestBody, onSuccess, onErrorMessage }) {
+			const button = qs(buttonSelector);
 			const originalText = button.textContent;
-			button.textContent = 'プレビュー中...';
+			button.textContent = loadingText;
 			button.disabled = true;
 			try {
-				const response = await fetch('/api/auto-split', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(requestData)
-				});
-				const result = await response.json();
-				if (response.ok) {
-					displayPreviewResult(result);
-				} else {
-					alert(result.error || 'プレビューの取得に失敗しました');
-				}
+		const response = await fetch('/api/auto-split', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
+		let result;
+		const text = await response.text();
+		try { result = text ? JSON.parse(text) : {}; } catch (_) { result = { error: text || null }; }
+		if (response.ok) onSuccess(result); else alert(result && result.error ? result.error : (onErrorMessage + (result && result.error ? `: ${result.error}` : '')));
 			} catch (error) {
-				console.error('プレビューエラー:', error);
-				alert('プレビューの取得に失敗しました');
-			} finally {
-				button.textContent = originalText;
-				button.disabled = false;
-			}
+				console.error(onErrorMessage, error); alert(onErrorMessage);
+			} finally { button.textContent = originalText; button.disabled = false; }
 		}
-		// 日本語ラベル
-		const attrJa = {
-			orientation: '向き',
-			clarity: '鮮明判定',
-			color: '鼻の色',
-			size: '鼻の大きさ',
-			fur: '毛色',
-			nose_length: '鼻の長さ',
-			main_label: 'クラス'
-		};
-		const valJa = {
-			front: '正面', side: '横向き', tilted: '斜め',
-			clear: '鮮明', blurred: 'ぼやけ',
-			black: '黒', brown: '茶色', gray: '灰色', pink: 'ピンク', marble: 'マーブル',
-			large: '大きい', small: '小さい',
-			light_fur: '明るい毛色', dark_fur: '暗い毛色',
-			nose_long: '長い', nose_medium: '中', nose_short: '短い',
-			nose: '鼻あり', none: '鼻なし'
-		};
-		const toJa = (map, key) => map[key] || key;
 
-		function renderSummaryTable(result) {
+		// プレビュー/実行
+		async function previewAutoSplit() {
+			const percents = getSplitPercents(); if (!validateSplitPercents(percents)) return;
+			const requestData = buildAutoSplitRequest({ previewOnly: true, includeOverwriteFlag: false });
+			await runAutoSplit({ buttonSelector: '.preview-button', loadingText: 'プレビュー中...', requestBody: requestData, onSuccess: displayPreviewResult, onErrorMessage: 'プレビューの取得に失敗しました' });
+		}
+		async function executeAutoSplit() {
+			const percents = getSplitPercents(); if (!validateSplitPercents(percents)) return;
+			const { train, val, test } = percents;
+			const confirmMessage = `クラス設定済みの全ての画像を以下の割合で分割します:\nTrain: ${train}%\nVal: ${val}%\nTest: ${test}%\n\n既存の分割設定も上書きされます。実行しますか？`;
+			if (!confirm(confirmMessage)) return;
+			const requestData = buildAutoSplitRequest({ previewOnly: false, includeOverwriteFlag: true });
+			await runAutoSplit({ buttonSelector: '.auto-split-button', loadingText: '分割中...', requestBody: requestData, onSuccess: displayExecuteResult, onErrorMessage: '自動分割に失敗しました' });
+		}
+		function renderSummaryTableFromCounts(total, counts) {
 			const rows = [
-				{ key: 'TRAIN', count: result.train_count, percent: result.train_percent_actual },
-				{ key: 'VAL', count: result.val_count, percent: result.val_percent_actual },
-				{ key: 'TEST', count: result.test_count, percent: result.test_percent_actual },
+				{ key: 'TRAIN', count: counts.train, percent: total ? Math.round(counts.train / total * 1000)/10 : 0 },
+				{ key: 'VAL', count: counts.val, percent: total ? Math.round(counts.val / total * 1000)/10 : 0 },
+				{ key: 'TEST', count: counts.test, percent: total ? Math.round(counts.test / total * 1000)/10 : 0 }
 			];
-			return `
-			<div class="table-wrap">
-				<table class="preview-table">
-					<caption>分割サマリー</caption>
-					<thead>
-						<tr><th>Split</th><th>枚数</th><th>割合</th></tr>
-					</thead>
-					<tbody>
-						${rows.map(r => `<tr><td>${r.key}</td><td>${r.count}枚</td><td>${r.percent}%</td></tr>`).join('')}
-					</tbody>
-				</table>
-			</div>`;
+			return `<div class="table-wrap"><table class="preview-table"><caption>分割サマリー</caption><thead><tr><th>Split</th><th>枚数</th><th>割合</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r.key}</td><td>${r.count}枚</td><td>${r.percent}%</td></tr>`).join('')}</tbody></table></div>`;
 		}
-
 		function renderDetailsTables(details) {
 			if (!details) return '';
-			const splitOrder = ['train','val','test'];
-			const attrOrder = ['orientation','clarity','color','size','fur','nose_length','main_label'];
-			let html = '';
-			// ピボット: attr -> value -> split -> {act, req}
-			const pivot = {};
+			const splitOrder = SPLITS; const attrOrder = ['orientation','clarity','color','size','fur','nose_length','main_label'];
+			let html = ''; const pivot = {};
 			splitOrder.forEach(split => {
 				const attrs = details[split] || {};
 				Object.keys(attrs).forEach(attr => {
@@ -586,126 +596,63 @@
 					const vals = new Set([...Object.keys(reqs), ...Object.keys(acts)]);
 					vals.forEach(v => {
 						pivot[attr][v] = pivot[attr][v] || {};
-						pivot[attr][v][split] = {
-							act: acts[v] || 0,
-							req: reqs[v] || 0
-						};
+						pivot[attr][v][split] = { act: acts[v] || 0, req: reqs[v] || 0 };
 					});
 				});
 			});
-			// 属性ごとにテーブルを描画
 			attrOrder.forEach(attr => {
-				if (!pivot[attr]) return;
-				const values = Object.keys(pivot[attr]);
-				if (values.length === 0) return;
-				html += `
-				<div class="table-wrap">
-					<table class="preview-table">
-						<caption>${toJa(attrJa, attr)}</caption>
-						<thead>
-							<tr>
-								<th>値</th>
-								<th>TRAIN</th>
-								<th>VAL</th>
-								<th>TEST</th>
-							</tr>
-						</thead>
-						<tbody>
-							${values.map(v => {
-								const cells = splitOrder.map(s => {
-									const rec = (pivot[attr][v] && pivot[attr][v][s]) || {act:0, req:0};
-									const label = `${rec.act}/${rec.req}`;
-									let cls = 'cell-muted';
-									if (rec.req > 0) {
-										cls = rec.act >= rec.req ? 'cell-ok' : 'cell-need';
-									} else if (rec.act > 0) {
-										cls = 'cell-extra';
-									}
-									return `<td class="${cls}">${label}</td>`;
-								}).join('');
-								return `<tr><td>${toJa(valJa, v)}</td>${cells}</tr>`;
-							}).join('')}
-						</tbody>
+				if (!pivot[attr]) return; const values = Object.keys(pivot[attr]); if (values.length === 0) return;
+				html += `<div class="table-wrap">
+					<table class="preview-table details-table">
+						<caption>${translateLabel(ATTR_LABELS_JA, attr)}</caption>
+						<colgroup>
+							<col class="col-value" />
+							<col class="col-split" />
+							<col class="col-split" />
+							<col class="col-split" />
+						</colgroup>
+						<thead><tr><th>値</th><th>TRAIN</th><th>VAL</th><th>TEST</th></tr></thead>
+						<tbody>${values.map(v => {
+							const cells = splitOrder.map(s => {
+								const rec = (pivot[attr][v] && pivot[attr][v][s]) || {act:0, req:0};
+								const label = `${rec.act}/${rec.req}`;
+								let cls = 'cell-muted';
+								if (rec.req > 0) { cls = rec.act >= rec.req ? 'cell-ok' : 'cell-need'; }
+								else if (rec.act > 0) { cls = 'cell-extra'; }
+								return `<td class="${cls}">${label}</td>`;
+							}).join('');
+							return `<tr><td>${translateLabel(VALUE_LABELS_JA, v)}</td>${cells}</tr>`;
+						}).join('')}</tbody>
 					</table>
 				</div>`;
 			});
 			return html;
 		}
-
 		function displayPreviewResult(result) {
+			// デバッグ: サーバからのプレビュー結果をコンソールに出力
+			try { console.log('[auto-split][preview] result:', result); } catch (_) {}
 			const previewDiv = document.getElementById('splitPreview');
-			previewDiv.innerHTML = `
-				<h4>📊 分割プレビュー</h4>
-				<p>クラス設定済み画像: <strong>${result.total_images}枚</strong></p>
-				${renderSummaryTable(result)}
-				${renderDetailsTables(result.details)}
-				<p style="margin-top: 15px; color: #666; font-size: 14px;">
-					⚠️ 実行すると既存の分割設定は上書きされます
-				</p>
-			`;
+			// サーバーの結果をそのままサマリーに反映（prefer時の純度優先やプール縮小を忠実に表示）
+			const counts = { train: result.train_count || 0, val: result.val_count || 0, test: result.test_count || 0 };
+			const serverTotal = result.total_images || 0;
+			const total = serverTotal || (counts.train + counts.val + counts.test);
+			const summaryHtml = renderSummaryTableFromCounts(total, counts);
+			const totalText = total || 0;
+			previewDiv.innerHTML = `<h4>📊 分割プレビュー</h4><p>対象画像: <strong>${totalText}枚</strong></p>${summaryHtml}${renderDetailsTables(result.details)}<p style="margin-top: 15px; color: #666; font-size: 14px;">⚠️ 実行すると既存の分割設定は上書きされます</p>`;
 			previewDiv.style.display = 'block';
 			document.getElementById('splitResult').style.display = 'none';
 		}
-		async function executeAutoSplit() {
-			const trainPercent = parseFloat(document.getElementById('trainPercent').value);
-			const valPercent = parseFloat(document.getElementById('valPercent').value);
-			const testPercent = parseFloat(document.getElementById('testPercent').value);
-			const total = trainPercent + valPercent + testPercent;
-			if (Math.abs(total - 100) > 0.01) {
-				alert(`割合の合計が100%になりません: ${total}%`);
-				return;
-			}
-			if (trainPercent < 0 || valPercent < 0 || testPercent < 0) {
-				alert('割合は0以上で入力してください');
-				return;
-			}
-			const requestData = {
-				train_percent: trainPercent,
-				val_percent: valPercent,
-				test_percent: testPercent,
-				overwrite_existing: true,
-				targets: collectTargets()
-			};
-			const confirmMessage = `クラス設定済みの全ての画像を以下の割合で分割します:\nTrain: ${trainPercent}%\nVal: ${valPercent}%\nTest: ${testPercent}%\n\n既存の分割設定も上書きされます。実行しますか？`;
-			if (!confirm(confirmMessage)) {
-				return;
-			}
-			const button = document.querySelector('.auto-split-button');
-			const originalText = button.textContent;
-			button.textContent = '分割中...';
-			button.disabled = true;
-			try {
-				const response = await fetch('/api/auto-split', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(requestData)
-				});
-				const result = await response.json();
-				if (response.ok) {
-					displayExecuteResult(result);
-				} else {
-					alert(result.error || '自動分割に失敗しました');
-				}
-			} catch (error) {
-				console.error('自動分割エラー:', error);
-				alert('自動分割に失敗しました');
-			} finally {
-				button.textContent = originalText;
-				button.disabled = false;
-			}
-		}
 		function displayExecuteResult(result) {
 			const resultDiv = document.getElementById('splitResult');
-			resultDiv.innerHTML = `
-				<h4>✅ 自動分割完了</h4>
-				<p>${result.message}</p>
-			`;
+			resultDiv.innerHTML = `<h4>✅ 自動分割完了</h4><p>${result.message}</p>`;
 			resultDiv.style.display = 'block';
 			document.getElementById('splitPreview').style.display = 'none';
 		}
-				document.addEventListener('DOMContentLoaded', () => {
-					loadSavedAutoSplitSettings();
-				});
+		document.addEventListener('DOMContentLoaded', () => {
+			loadSavedAutoSplitSettings().then(() => computeAndRenderEstimate());
+			loadEligibleCount();
+			wireEstimateEvents();
+		});
 		</script>
 	</div>
 </body>
