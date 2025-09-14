@@ -68,6 +68,7 @@ from datetime import datetime
 import shutil
 from pathlib import Path
 import random
+import hashlib
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dog-nose-labeling-secret-key'
@@ -186,6 +187,16 @@ def init_db():
     ''')
     
     conn.commit()
+    # 互換マイグレーション: labels に is_completed 列が無ければ追加
+    try:
+        cursor.execute("PRAGMA table_info(labels)")
+        cols = [r[1] for r in cursor.fetchall()]
+        if 'is_completed' not in cols:
+            cursor.execute("ALTER TABLE labels ADD COLUMN is_completed INTEGER DEFAULT 0")
+            conn.commit()
+    except Exception as e:
+        # 追加に失敗しても続行（既存環境では既に存在する想定）
+        pass
     conn.close()
 
 def register_images():
@@ -470,8 +481,13 @@ def filter_images():
 @app.route('/api/auto-split', methods=['POST'])
 def auto_split_dataset():
     """自動データセット分割（詳細ターゲット対応）"""
-    data = request.json
+    # 入力を堅牢に受け取る（壊れたJSONでの500回避）
+    try:
+        data = request.get_json(silent=True) or {}
+    except Exception:
+        return jsonify({'error': '無効なJSONリクエストです'}), 400
     preview_only = data.get('preview_only', False)
+    prefer_target_distribution = bool(data.get('prefer_target_distribution', False))
 
     train_percent = float(data.get('train_percent', 80))
     val_percent = float(data.get('val_percent', 10))
@@ -490,19 +506,19 @@ def auto_split_dataset():
 
     # 設定保存は「実行時（preview_only=False）」にのみ行う
 
-    # クラス設定済み（main_label が null/空でない）を対象に取得
+    # 対象データ: is_completed = 1 のみ（鼻なし含む）
     cursor.execute('''
         SELECT i.id, i.filepath, l.main_label, l.sub_labels, l.dataset_split
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
-        WHERE l.main_label IS NOT NULL AND l.main_label != ''
+        WHERE l.is_completed = 1
         ORDER BY i.id
     ''')
 
     rows = cursor.fetchall()
     if not rows:
         conn.close()
-        return jsonify({'error': '作業済みの画像がありません'}), 400
+        return jsonify({'error': '分割対象（is_completed=1）の画像がありません'}), 400
 
     # 画像プール準備
     pool = []
@@ -518,18 +534,75 @@ def auto_split_dataset():
             'sub_labels': sub_labels,
         })
 
-    total_count = len(pool)
-    # 元のシンプル分割（ターゲット未指定時）に後方互換
-    if not any(isinstance(v, dict) and v for v in targets.values()):
-        rng = list(pool)
-        random.shuffle(rng)
-        train_count = int(total_count * train_percent / 100)
-        val_count = int(total_count * val_percent / 100)
-        test_count = total_count - train_count - val_count
+    # オプション: ターゲットが main_label のみで、各splitが nose=100%（noneほか0%）の場合は、
+    # プールを鼻あり（main_label == 'nose'相当）のみへ縮小して「未使用を許容」する
+    def targets_require_nose_only(tg):
+        if not tg:
+            return False
+        cls = (tg.get('main_label') or {})
+        # 値は 'nose' と 'none' を想定（その他キーがあれば不一致）
+        allowed_keys = set(['nose', 'none'])
+        if any(k not in allowed_keys for k in cls.keys()):
+            return False
+        # 各splitについて nose=100 かつ none が未指定または0 とみなせる場合のみ True
+        def pct_of(val, split):
+            try:
+                return float(((cls.get(val) or {}).get(split, 0)) or 0)
+            except Exception:
+                return 0.0
+        for split in ['train','val','test']:
+            if abs(pct_of('nose', split) - 100.0) > 1e-6:
+                return False
+            if pct_of('none', split) > 0:
+                return False
+        return True
 
-        train_images = rng[:train_count]
-        val_images = rng[train_count:train_count + val_count]
-        test_images = rng[train_count + val_count:]
+    # prefer が有効で、かつ main_label で各splitが nose=100%（none=0%/未指定）なら鼻ありのみ使用
+    if prefer_target_distribution and targets_require_nose_only(targets):
+        filtered = []
+        for p in pool:
+            ml = p.get('main_label')
+            if ml is None or ml == '' or ml == 'none':
+                continue
+            if ml == 'nose':
+                filtered.append(p)
+        pool = filtered
+
+    total_count = len(pool)
+    # 決定的シード（プレビューと実行で同一結果に）
+    def build_seed():
+        fp_concat = '\n'.join(sorted([p['filepath'] for p in pool]))
+        targets_text = json.dumps(targets or {}, ensure_ascii=False, sort_keys=True)
+        s = f"{train_percent}-{val_percent}-{test_percent}\n" + fp_concat + "\n" + targets_text
+        return int(hashlib.sha256(s.encode('utf-8')).hexdigest(), 16) % (2**32)
+
+    rng = random.Random(build_seed())
+
+    has_targets = any(isinstance(v, dict) and v for v in targets.values())
+    # 元のシンプル分割（ターゲット未指定時）に後方互換
+    if not has_targets:
+        lst = list(pool)
+        rng.shuffle(lst)
+        # ハミルトン法で希望枚数を算出
+        exact = {
+            'train': total_count * train_percent / 100.0,
+            'val': total_count * val_percent / 100.0,
+            'test': total_count * test_percent / 100.0,
+        }
+        base = {k: int(v) for k, v in exact.items()}
+        assigned = sum(base.values())
+        rema = sorted([(exact[s] - base[s], s) for s in ['train','val','test']], reverse=True)
+        iidx = 0
+        while assigned < total_count:
+            _, sname = rema[iidx % len(rema)]
+            base[sname] += 1
+            assigned += 1
+            iidx += 1
+        train_count, val_count, test_count = base['train'], base['val'], base['test']
+
+        train_images = lst[:train_count]
+        val_images = lst[train_count:train_count + val_count]
+        test_images = lst[train_count + val_count:]
 
         result = {
             'total_images': total_count,
@@ -546,6 +619,8 @@ def auto_split_dataset():
             return jsonify(result)
 
         try:
+            # 既存の分割結果をクリア（対象: is_completed=1）
+            cursor.execute("UPDATE labels SET dataset_split = NULL, updated_at = CURRENT_TIMESTAMP WHERE is_completed = 1")
             for item in train_images:
                 cursor.execute("UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
             for item in val_images:
@@ -575,7 +650,19 @@ def auto_split_dataset():
         'val': val_percent,
         'test': test_percent,
     }
-    split_targets_counts = {s: int(total_count * split_perc[s] / 100) for s in splits}
+    # prefer の有効化条件: 明示ONのみ（UIはデフォルトOFF）
+    prefer_effective = prefer_target_distribution
+    # ハミルトン法で split 希望枚数を算出（合計=total_count）
+    exact = {s: total_count * split_perc[s] / 100.0 for s in splits}
+    desired_counts = {s: int(exact[s]) for s in splits}
+    assigned = sum(desired_counts.values())
+    rema = sorted([(exact[s] - desired_counts[s], s) for s in splits], reverse=True)
+    iidx = 0
+    while assigned < total_count:
+        _, sname = rema[iidx % len(rema)]
+        desired_counts[sname] += 1
+        assigned += 1
+        iidx += 1
 
     # 属性マップと判定関数
     attribute_order = ['orientation', 'clarity', 'color', 'size', 'fur', 'nose_length', 'main_label']
@@ -589,6 +676,10 @@ def auto_split_dataset():
         # sub_labels に含まれるかで判定
         return val in (item.get('sub_labels') or [])
 
+    def is_none_item(it):
+        ml = it.get('main_label')
+        return (ml is None) or (ml == '') or (ml == 'none')
+
     # 割当結果
     assignments = {s: [] for s in splits}
     # 現在のカバレッジ集計
@@ -596,37 +687,134 @@ def auto_split_dataset():
 
     # 乱択順
     unassigned = list(pool)
-    random.shuffle(unassigned)
+    rng.shuffle(unassigned)
+
+    # ターゲット重視時のフェアネス: main_label 'none'（鼻なし）の配分をavailable枚数で按分
+    fairness_required = {s: {} for s in splits}
+    if prefer_effective:
+        try:
+            # 可用な鼻なし枚数
+            avail_none = sum(1 for p in pool if (p.get('main_label') in (None, '', 'none')))
+            cls_targets = (targets.get('main_label') or {})
+            # 各splitの重み（希望量）: desired_counts[s] * percent_none
+            weights = {}
+            sum_w = 0.0
+            for s in splits:
+                pct = float(((cls_targets.get('none') or {}).get(s, 0)) or 0)
+                w = desired_counts[s] * pct / 100.0
+                weights[s] = w
+                sum_w += w
+            if avail_none > 0 and sum_w > 0:
+                # ハミルトン按分
+                exact = {s: avail_none * (weights[s] / sum_w) for s in splits}
+                base = {s: int(exact[s]) for s in splits}
+                assigned = sum(base.values())
+                rema = sorted([(exact[s] - base[s], s) for s in splits], reverse=True)
+                iidx = 0
+                while assigned < avail_none:
+                    _, sname = rema[iidx % len(rema)]
+                    base[sname] += 1
+                    assigned += 1
+                    iidx += 1
+                for s in splits:
+                    if base[s] > 0:
+                        fairness_required[s]['main_label:none'] = base[s]
+        except Exception:
+            pass
+
+    # noneの要求上限（prefer時のみ有効）
+    required_none_limit = {s: int(fairness_required.get(s, {}).get('main_label:none', 0) or 0) for s in splits}
+
+    
+
+    # 事前割当（prefer時の希少クラス: main_label 'none'）
+    if prefer_effective:
+        # 公平按分で要求された 'none' を先に確保
+        none_indices = [idx for idx, it in enumerate(unassigned) if is_none_item(it)]
+        take_order = none_indices  # 既にrng.shuffle済みの順を尊重
+        used_indices = set()
+        for s in ['val', 'test', 'train']:
+            need_none = required_none_limit.get(s, 0)
+            if need_none <= 0:
+                continue
+            target_total = desired_counts[s]
+            # splitの目標枚数を超えないように確保
+            can_take = max(0, target_total - len(assignments[s]))
+            need = min(need_none, can_take)
+            for idx in take_order:
+                if need <= 0:
+                    break
+                if idx in used_indices:
+                    continue
+                item = unassigned[idx]
+                # 念のため None 判定
+                if not is_none_item(item):
+                    continue
+                assignments[s].append(item)
+                used_indices.add(idx)
+                need -= 1
+        if used_indices:
+            # 未割当に残す要素のみ再構築
+            unassigned = [it for i, it in enumerate(unassigned) if i not in used_indices]
 
     # 各 split でターゲットを満たすように追加
     for s in splits:
-        target_total = split_targets_counts[s]
+        target_total = desired_counts[s]
         # まずは指定された属性ターゲットを順に満たす
         for attr in attribute_order:
             attr_targets = (targets.get(attr) or {})
+            # 値ごとの割当順序: prefer有効時かつ main_label の場合は 'none' を先に処理して枠を確保
+            if prefer_effective and attr == 'main_label' and attr_targets:
+                vals_order = sorted(list(attr_targets.keys()), key=lambda v: 0 if v == 'none' else 1)
+            else:
+                vals_order = list(attr_targets.keys())
             # 値ごとのパーセンテージ取得
-            for val, conf in attr_targets.items():
+            for val in vals_order:
+                conf = attr_targets.get(val) or {}
                 try:
                     percent = float((conf or {}).get(s, 0) or 0)
                 except Exception:
                     percent = 0
                 if percent <= 0:
                     continue
-                required = int(target_total * percent / 100)
-                # すでに割当済みの該当数
-                current = coverage[s][attr].get(val, 0)
+                # フェアネス上書き: main_label:none は按分済みの目標を使う
+                if prefer_effective and attr == 'main_label' and val == 'none' and fairness_required[s].get('main_label:none') is not None:
+                    required = int(fairness_required[s].get('main_label:none') or 0)
+                else:
+                    required = int(target_total * percent / 100)
+                # すでに割当済みの該当数（coverageではなく、現assignmentsから算出して重複加算を防止）
+                current = 0
+                for _it in assignments[s]:
+                    if matches(_it, attr, val):
+                        current += 1
                 need = max(0, required - current)
                 if need <= 0:
                     continue
                 # 未割当から条件に合うものを取得
                 picked = []
                 remain = []
-                for item in unassigned:
+                taken_indices = set()
+                taken_none = 0
+                for idx, item in enumerate(unassigned):
+                    # split の目標枚数を超えないように保護
+                    if len(assignments[s]) + len(picked) >= target_total:
+                        remain.append(item)
+                        continue
+                    # prefer時は none の上限を超えないよう制御
+                    if prefer_effective and attr != 'main_label' and is_none_item(item):
+                        # すでに割当済みのnone数
+                        assigned_none = sum(1 for _it in assignments[s] if is_none_item(_it)) + taken_none
+                        if assigned_none >= required_none_limit.get(s, 0):
+                            remain.append(item)
+                            continue
                     if len(picked) < need and matches(item, attr, val):
                         picked.append(item)
+                        if prefer_effective and attr != 'main_label' and is_none_item(item):
+                            taken_none += 1
+                        taken_indices.add(idx)
                     else:
                         remain.append(item)
-                unassigned = remain
+                unassigned = [it for i, it in enumerate(unassigned) if i not in taken_indices]
                 assignments[s].extend(picked)
                 # カバレッジは最終集計時に assignments から一括で更新する（途中での二重加算を避ける）
                 # split の総数を超えないように調整
@@ -637,12 +825,71 @@ def auto_split_dataset():
         # 余りを埋める（ターゲット未指定 or 充足後の残り）
         remain_needed = max(0, target_total - len(assignments[s]))
         if remain_needed > 0 and unassigned:
-            take = unassigned[:remain_needed]
+            # prefer の有無にかかわらず、split の目標枚数までは未割当から充足する
+            taken_indices = set()
+            take = []
+            taken_none = 0
+            for idx, item in enumerate(unassigned):
+                if len(take) >= remain_needed:
+                    break
+                if prefer_effective and is_none_item(item):
+                    assigned_none = sum(1 for _it in assignments[s] if is_none_item(_it)) + taken_none
+                    if assigned_none >= required_none_limit.get(s, 0):
+                        continue
+                    taken_none += 1
+                take.append(item)
+                taken_indices.add(idx)
             assignments[s].extend(take)
-            unassigned = unassigned[remain_needed:]
-        # カバレッジを assignments から一括更新（main_label と、targets に指定があるサブラベルのみ）
+            if taken_indices:
+                unassigned = [it for i, it in enumerate(unassigned) if i not in taken_indices]
+
+    # 残余があれば少ない split から順に追加
+    if unassigned:
+        if prefer_effective:
+            # ターゲット優先: 余剰は配分せず未使用（比率は近似のまま）
+            unassigned = []
+        else:
+            order = sorted(splits, key=lambda x: len(assignments[x]))
+            for item in unassigned:
+                order = sorted(splits, key=lambda x: len(assignments[x]))
+                assignments[order[0]].append(item)
+            unassigned = []
+
+    # 最終リバランス: prefer_target_distribution がオフのときだけ実施
+    if not prefer_effective:
+        def move_one(src, dst):
+            if assignments[src]:
+                assignments[dst].append(assignments[src].pop())
+                return True
+            return False
+
+        # test を満たす
+        while len(assignments['test']) < desired_counts['test']:
+            moved = False
+            for src in ['train', 'val']:
+                if len(assignments[src]) > desired_counts[src]:
+                    if move_one(src, 'test'):
+                        moved = True
+                        break
+            if not moved:
+                break
+        # val を満たす
+        while len(assignments['val']) < desired_counts['val']:
+            moved = False
+            for src in ['train', 'test']:
+                if len(assignments[src]) > desired_counts[src]:
+                    if move_one(src, 'val'):
+                        moved = True
+                        break
+            if not moved:
+                break
+
+    # カバレッジを assignments から計算（main_label + 指定されたラベルのみ）
+    for s in splits:
         for item in assignments[s]:
-            ml = item.get('main_label')
+            # main_label は None/空文字を 'none' に正規化（JSONキーの安定化とUI整合のため）
+            ml_raw = item.get('main_label')
+            ml = ml_raw if (ml_raw is not None and ml_raw != '') else 'none'
             coverage[s]['main_label'][ml] = coverage[s]['main_label'].get(ml, 0) + 1
             for attr in ['orientation', 'clarity', 'color', 'size', 'fur', 'nose_length']:
                 attr_values = targets.get(attr)
@@ -668,12 +915,27 @@ def auto_split_dataset():
             s: {
                 attr: {
                     'actual_counts': coverage[s][attr],
-                    'required_counts': {
-                        val: int(split_targets_counts[s] * float(((targets.get(attr) or {}).get(val) or {}).get(s, 0) or 0) / 100)
-                        for val in (targets.get(attr) or {}).keys()
-                    }
-                } for attr in attribute_order if targets.get(attr)
-            } for s in splits
+                    'required_counts': (
+                        {
+                            **{
+                                v: (
+                                    # prefer時の main_label:none は公平按分を表示
+                                    int(fairness_required[s].get('main_label:none', 0))
+                                    if (prefer_effective and attr == 'main_label' and v == 'none' and fairness_required[s].get('main_label:none') is not None)
+                                    else int(
+                                        desired_counts[s]
+                                        * float(((targets.get(attr) or {}).get(v) or {}).get(s, 0) or 0)
+                                        / 100
+                                    )
+                                )
+                                for v in (targets.get(attr) or {}).keys()
+                            }
+                        }
+                    )
+                }
+                for attr in attribute_order if targets.get(attr)
+            }
+            for s in splits
         }
     }
 
@@ -683,6 +945,8 @@ def auto_split_dataset():
 
     # 実更新
     try:
+        # 既存の分割結果をクリア（対象: is_completed=1）
+        cursor.execute("UPDATE labels SET dataset_split = NULL, updated_at = CURRENT_TIMESTAMP WHERE is_completed = 1")
         for item in train_images:
             cursor.execute("UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
         for item in val_images:
