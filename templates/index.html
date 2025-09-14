@@ -135,7 +135,7 @@
             align-items: center;
             gap: 8px;
         }
-        .filter-group label { font-size: 13px; color: #555; }
+    .filter-group label { font-size: 13px; color: #555; white-space: nowrap; }
         .filter-group select { padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; }
         .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
         .filter-chip {
@@ -424,6 +424,10 @@
                         <option value="none">鼻なし/未設定</option>
                     </select>
                 </div>
+                <div class="filter-group" style="flex:2 1 360px; min-width:260px;">
+                    <label for="filterFilename">ファイル名で検索</label>
+                    <input id="filterFilename" type="text" placeholder="例: 0058a98c... .jpg" style="width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:8px;">
+                </div>
                 <div class="filter-actions">
                     <span id="filterClear" class="filter-clear">フィルタをクリア</span>
                 </div>
@@ -484,11 +488,11 @@
         <div class="main-content">
             <div class="image-section">
                 <div class="navigation">
-                    <button class="nav-button" id="prevBtn" onclick="previousImage()">← 前の画像</button>
+                    <button class="nav-button" id="prevBtn" onclick="previousImage()">(←) 前の画像</button>
                     <div class="image-counter">
                         <span id="currentIndex">0</span> / <span id="totalImages">0</span>
                     </div>
-                    <button class="nav-button" id="nextBtn" onclick="nextImage()">次の画像 →</button>
+                    <button class="nav-button" id="nextBtn" onclick="nextImage()">次の画像 (→)</button>
                 </div>
 
                 <div class="image-container" id="imageContainer" style="display: flex; align-items: center; gap: 32px; min-height: 500px;">
@@ -627,99 +631,11 @@
                     </div>
                 </div>
 
-                <button class="save-button" onclick="saveLabel()">💾 ラベルを保存</button>
+                <button class="save-button" onclick="saveLabel()">ラベルを保存 (Enter)</button>
 
                 <div class="export-section">
                     <div style="margin-top:10px;">
                         <button class="export-button" onclick="exportCurrentImageDataset()">この画像だけデータセットZIP</button>
-                    </div>
-                </div>
-
-                <div class="shortcuts">
-                    <div class="shortcut-item">
-                        <span>鼻の長さ: 長い</span>
-                        <span class="shortcut-key">O</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>鼻の長さ: 中</span>
-                        <span class="shortcut-key">M</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>鼻の長さ: 短い</span>
-                        <span class="shortcut-key">Shift+S</span>
-                    </div>
-                    <h4>⌨️ キーボードショートカット</h4>
-                    <div class="shortcut-item">
-                        <span>鼻あり:</span>
-                        <span class="shortcut-key">1</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>鼻なし:</span>
-                        <span class="shortcut-key">2</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>正面:</span>
-                        <span class="shortcut-key">F</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>横向き:</span>
-                        <span class="shortcut-key">S</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>斜め:</span>
-                        <span class="shortcut-key">T</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>濡れている:</span>
-                        <span class="shortcut-key">W</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>乾いている:</span>
-                        <span class="shortcut-key">D</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>ぼやけている:</span>
-                        <span class="shortcut-key">B</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>黒:</span>
-                        <span class="shortcut-key">K</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>茶色:</span>
-                        <span class="shortcut-key">R</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>ピンク:</span>
-                        <span class="shortcut-key">P</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>灰色:</span>
-                        <span class="shortcut-key">G</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>マーブル:</span>
-                        <span class="shortcut-key">Shift+M</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>濡れている:</span>
-                        <span class="shortcut-key">W</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>乾いている:</span>
-                        <span class="shortcut-key">D</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>前の画像:</span>
-                        <span class="shortcut-key">←</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>次の画像:</span>
-                        <span class="shortcut-key">→</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>保存:</span>
-                        <span class="shortcut-key">Enter</span>
                     </div>
                 </div>
             </div>
@@ -1086,19 +1002,24 @@
             unworked: 'reviewFilterUnworked',
             mainLabel: 'reviewFilterMainLabel',
             subLabels: 'reviewFilterSubLabels',
+            filename: 'reviewFilterFilename',
         };
-        let filterState = { mainLabel: 'all', subLabels: new Set() };
+        let filterState = { mainLabel: 'all', subLabels: new Set(), filename: '' };
 
         function loadFilterStateFromStorage() {
             try {
                 const ml = localStorage.getItem(FILTER_STORAGE_KEYS.mainLabel);
                 filterState.mainLabel = ml || 'all';
                 const raw = localStorage.getItem(FILTER_STORAGE_KEYS.subLabels);
+                const savedName = localStorage.getItem(FILTER_STORAGE_KEYS.filename) || '';
+                filterState.filename = savedName;
                 const arr = raw ? JSON.parse(raw) : [];
                 filterState.subLabels = new Set(Array.isArray(arr) ? arr : []);
                 const savedUnworked = localStorage.getItem(FILTER_STORAGE_KEYS.unworked);
                 const cb = document.getElementById('filterUnworked');
                 if (cb) cb.checked = (savedUnworked === '1');
+                const nameInput = document.getElementById('filterFilename');
+                if (nameInput) nameInput.value = filterState.filename;
                 const sel = document.getElementById('filterMainLabel');
                 if (sel) sel.value = filterState.mainLabel;
                 // 反映: chips
@@ -1114,6 +1035,7 @@
             try {
                 localStorage.setItem(FILTER_STORAGE_KEYS.mainLabel, filterState.mainLabel);
                 localStorage.setItem(FILTER_STORAGE_KEYS.subLabels, JSON.stringify(Array.from(filterState.subLabels)));
+                localStorage.setItem(FILTER_STORAGE_KEYS.filename, filterState.filename || '');
             } catch {}
         }
 
@@ -1147,10 +1069,16 @@
                 }
                 return true;
             };
+            const runFilenameFilter = (img) => {
+                const q = (filterState.filename || '').trim().toLowerCase();
+                if (!q) return true;
+                const fname = (img?.filename || '').toLowerCase();
+                return fname.includes(q);
+            };
             // 構築
             let base = allImages.slice();
             if (showOnlyUnworked) base = base.filter(isUnworked);
-            base = base.filter(runMainLabelFilter).filter(runSubLabelsFilter);
+            base = base.filter(runMainLabelFilter).filter(runSubLabelsFilter).filter(runFilenameFilter);
             images = base;
             document.getElementById('totalImages').textContent = images.length;
             updateFilterCounts();
@@ -1277,6 +1205,31 @@
                     });
                     mlSelect._bound = true;
                 }
+                // ファイル名フィルタ（デバウンス）
+                const nameInput = document.getElementById('filterFilename');
+                if (nameInput && !nameInput._bound) {
+                    let t = null;
+                    const handler = () => {
+                        filterState.filename = nameInput.value || '';
+                        persistFilterState();
+                        const wantOnlyUnworked = !!document.getElementById('filterUnworked')?.checked;
+                        const prevId = images?.[currentImageIndex]?.id;
+                        rebuildImagesFromAll(wantOnlyUnworked);
+                        if (images.length === 0) { showNoImagesMessage(); return; }
+                        hideNoImagesMessage();
+                        let idx = 0;
+                        if (prevId != null) {
+                            const found = images.findIndex(i => i.id === prevId);
+                            if (found !== -1) idx = found; else idx = 0;
+                        }
+                        loadImage(idx);
+                    };
+                    nameInput.addEventListener('input', () => {
+                        if (t) clearTimeout(t);
+                        t = setTimeout(handler, 250);
+                    });
+                    nameInput._bound = true;
+                }
                 // サブラベルchips
                 document.querySelectorAll('.filter-chip').forEach(chip => {
                     if (chip._bound) return;
@@ -1311,8 +1264,11 @@
                     clear.addEventListener('click', () => {
                         filterState.mainLabel = 'all';
                         filterState.subLabels = new Set();
+                        filterState.filename = '';
                         const ml = document.getElementById('filterMainLabel');
                         if (ml) ml.value = 'all';
+                        const nameInput = document.getElementById('filterFilename');
+                        if (nameInput) nameInput.value = '';
                         document.querySelectorAll('.filter-chip.active').forEach(c => c.classList.remove('active'));
                         persistFilterState();
                         const wantOnlyUnworked = !!document.getElementById('filterUnworked')?.checked;
@@ -1453,8 +1409,8 @@
                             cropWrapper.style.display = 'block';
                             croppedCanvas.style.display = 'none';
                             let noNoseImg = cropWrapper.querySelector('.no-nose-img');
-                            // appendChild先をcroppedBoxWrapper内の2番目のdiv（canvasの親）に限定
-                            let appendTarget = cropWrapper.querySelector('div > .no-nose-img') ? cropWrapper.querySelector('div') : cropWrapper.querySelector('div');
+                            // appendChild先を croppedBoxWrapper の 2番目の div（canvasの親）に限定
+                            const appendTarget = cropWrapper.querySelector('div:nth-of-type(2)');
                             if (!noNoseImg) {
                                 noNoseImg = document.createElement('img');
                                 noNoseImg.src = '/static/no-nose-img.png';
@@ -1818,6 +1774,11 @@
                     setupBboxCanvasEvents(canvas, img);
                 } else {
                     canvas.style.display = 'none';
+                    // nose 以外に変更された場合は bbox をクリア
+                    window.currentBbox = null;
+                    if (images[currentImageIndex]) {
+                        images[currentImageIndex].bbox = null;
+                    }
                 }
             }
         }
@@ -1897,6 +1858,10 @@
                 // 既存のbboxがあればそれを使う
                 bbox = typeof image.bbox === 'string' ? JSON.parse(image.bbox) : image.bbox;
             }
+            // nose 以外では bbox を送らない（整合性維持）
+            if (currentMainLabel !== 'nose') {
+                bbox = null;
+            }
             const data = {
                 image_path: image.filepath,
                 main_label: currentMainLabel,
@@ -1949,8 +1914,13 @@
             }
         }
 
+        // ナビゲーション連打防止用ロック
+        let __navLock = false;
         // 前の画像
         function previousImage() {
+            if (__navLock) return;
+            __navLock = true;
+            setTimeout(() => { __navLock = false; }, 100);
             if (currentImageIndex > 0) {
                 loadImage(currentImageIndex - 1);
             }
@@ -1958,12 +1928,26 @@
 
         // 次の画像
         function nextImage() {
+            if (__navLock) return;
+            __navLock = true;
+            setTimeout(() => { __navLock = false; }, 100);
             if (currentImageIndex < images.length - 1) {
                 loadImage(currentImageIndex + 1);
             }
         }
 
+        // 押されているキーの集合をトラッキング（修飾キー以外の同時押下を無効化）
+        const __pressedKeys = new Set();
+        const __modifierKeys = new Set(['Shift', 'Control', 'Alt', 'Meta']);
+        window.addEventListener('blur', () => __pressedKeys.clear());
+
         document.addEventListener('keydown', function(event) {
+            __pressedKeys.add(event.key);
+            const nonModifierPressed = Array.from(__pressedKeys).filter(k => !__modifierKeys.has(k));
+            if (nonModifierPressed.length > 1) {
+                // 2つ以上の非修飾キーが押下されている間はショートカットを発火させない
+                return;
+            }
             // 元画像編集モーダルが開いている場合はEnterで保存・閉じる
             if (originalModal && originalModal.style.display === 'flex') {
                 if (event.key === 'Enter') {
@@ -2074,6 +2058,10 @@
                     saveLabel();
                     break;
             }
+        });
+
+        document.addEventListener('keyup', function(event) {
+            __pressedKeys.delete(event.key);
         });
 
         async function previewAutoSplit() {

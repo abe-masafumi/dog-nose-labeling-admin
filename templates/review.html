@@ -18,16 +18,11 @@
         }
 
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
 
         .main-flex {
             display: flex;
             flex-direction: row;
-            gap: 24px;
+            gap: 20px;                 /* 隙間を少し詰める */
             align-items: flex-start;
         }
 
@@ -40,12 +35,11 @@
             text-align: center;
         }
 
-		.container {
-			max-width: 1200px;
-			margin: 0 auto;
-			padding: 20px;
-			padding-top: 80px; /* ヘッダー分の余白 */
-		}
+        .container {
+            max-width: 1440px;         /* 画面が広い場合は結果をさらに広げる */
+            margin: 0 auto;
+            padding: 20px;
+        }
 
 		.header {
 			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -69,15 +63,16 @@
 
         .filter-section {
             background: white;
-            padding: 20px;
+            padding: 14px 16px;           /* 余白を圧縮 */
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            width: 280px;
-            min-width: 220px;
-            max-height: calc(100vh - 120px); /* 画面高に応じて可変 */
+            width: 240px;                 /* 幅を縮小（280→240） */
+            min-width: 200px;             /* 最小幅も少し縮小 */
+            max-height: calc(100vh - 120px);
             overflow-y: auto;
             position: sticky;
-            top: 80px; /* ヘッダー分の余白に合わせて詰める */
+            top: 80px;
+            font-size: 13px;              /* 全体の文字をやや小さく */
         }
 
         .filter-section h3 {
@@ -86,28 +81,30 @@
         }
 
         .filter-group {
-            margin-bottom: 20px;
+            margin-bottom: 12px;          /* グループ間余白を縮小 */
         }
 
         .filter-group h4 {
-            margin-bottom: 10px;
+            margin-bottom: 6px;           /* タイトル下の余白を縮小 */
             color: #555;
+            font-size: 0.95em;            /* タイトル文字も微縮 */
         }
 
         .filter-options {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;                     /* チップ間隔を縮小 */
         }
 
         .filter-option {
             background-color: #f8f9fa;
             border: 2px solid #e9ecef;
-            padding: 8px 16px;
-            border-radius: 20px;
+            padding: 6px 12px;           /* チップを小さく */
+            border-radius: 18px;
             cursor: pointer;
             transition: all 0.3s ease;
             user-select: none;
+            font-size: 0.92em;           /* 文字少し小さく */
         }
 
         .filter-option:hover {
@@ -122,16 +119,17 @@
 
         .filter-controls {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 8px;                     /* ボタン間隔縮小 */
+            margin-top: 10px;             /* 上余白縮小 */
         }
 
         .search-button, .clear-button {
-            padding: 10px 20px;
+            padding: 8px 14px;            /* ボタンもコンパクトに */
             border: none;
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
+            font-size: 0.95em;            /* ボタン文字サイズ調整 */
         }
 
         .search-button {
@@ -783,8 +781,8 @@
                 </div>
             </div>
             <div class="filter-controls">
-                <button class="search-button" onclick="searchImages()">🔍 検索</button>
-                <button class="clear-button" onclick="clearFilters()">🗑️ フィルタークリア</button>
+                <button class="search-button" onclick="searchImages()">検索</button>
+                <button class="clear-button" onclick="clearFilters()">フィルタークリア</button>
             </div>
         </div>
         <div class="results-section">
@@ -931,7 +929,7 @@
         // ページネーション用グローバル変数
         let currentPage = 1;
         let lastResults = [];
-        const PAGE_SIZE = 50;
+        const PAGE_SIZE = 40;
 
         const LABEL_JA_MAP = {
             // メインラベル
