@@ -294,6 +294,10 @@ def save_label():
     sub_labels = json.dumps(data.get('sub_labels', []))
     dataset_split = data.get('dataset_split')
     bbox = data.get('bbox')
+    # メインラベルが nose 以外（None 含む）の場合は bbox を常に NULL にする（データ整合性のため）
+    if main_label is None or main_label != 'nose':
+        bbox = None
+    # それ以外の場合のみ文字列化
     if bbox is not None and not isinstance(bbox, str):
         bbox = json.dumps(bbox)
     # 鼻の長さサブラベルが1つも選択されていない場合はis_completed=0で保存
