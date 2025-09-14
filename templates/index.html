@@ -99,6 +99,60 @@
             margin-bottom: 20px;
         }
 
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0 16px;
+            font-size: 14px;
+            color: #444;
+        }
+        .filter-bar input[type="checkbox"] {
+            transform: translateY(1px);
+        }
+        .filter-muted {
+            color: #666;
+            font-size: 12px;
+        }
+
+        /* 詳細フィルタ（クラス・サブラベル） */
+        .filter-panel {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin: 0 0 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 16px;
+            align-items: center;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-group label { font-size: 13px; color: #555; }
+        .filter-group select { padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; }
+        .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .filter-chip {
+            display: inline-block;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 9999px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 12px;
+            color: #444;
+            user-select: none;
+        }
+        .filter-chip.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .filter-actions { margin-left: auto; }
+        .filter-clear { color: #666; font-size: 12px; text-decoration: underline; cursor: pointer; }
+
         .nav-button {
             background: #007bff;
             color: white;
@@ -353,6 +407,80 @@
             <p>犬の顔画像から鼻の有無を判定し、機械学習用データセットを作成します</p>
         </div>
 
+        <!-- フィルタ: 未作業のみ表示（上部配置） -->
+        <div class="filter-bar">
+            <label><input type="checkbox" id="filterUnworked"> 未作業のみ表示</label>
+            <span id="filterCounts" class="filter-muted"></span>
+        </div>
+
+        <!-- 詳細フィルタ（クラス・サブラベル） -->
+        <div class="filter-panel">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="filterMainLabel">クラス</label>
+                    <select id="filterMainLabel">
+                        <option value="all">すべて</option>
+                        <option value="nose">鼻あり</option>
+                        <option value="none">鼻なし/未設定</option>
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <span id="filterClear" class="filter-clear">フィルタをクリア</span>
+                </div>
+            </div>
+            <div class="filter-row" style="margin-top:10px;">
+                <div class="filter-group" style="flex:1 1 280px; min-width:260px;">
+                    <label>鼻の向き</label>
+                    <div class="filter-chips">
+                        <span class="filter-chip" data-filter-cat="orientation" data-filter-label="front">正面</span>
+                        <span class="filter-chip" data-filter-cat="orientation" data-filter-label="side">横向き</span>
+                        <span class="filter-chip" data-filter-cat="orientation" data-filter-label="tilted">斜め</span>
+                    </div>
+                </div>
+                <div class="filter-group" style="flex:1 1 220px; min-width:200px;">
+                    <label>鮮明判定</label>
+                    <div class="filter-chips">
+                        <span class="filter-chip" data-filter-cat="clarity" data-filter-label="clear">鮮明</span>
+                        <span class="filter-chip" data-filter-cat="clarity" data-filter-label="blurred">ぼやけ</span>
+                    </div>
+                </div>
+                <div class="filter-group" style="flex:1 1 360px; min-width:320px;">
+                    <label>鼻の色</label>
+                    <div class="filter-chips">
+                        <span class="filter-chip" data-filter-cat="color" data-filter-label="black">黒</span>
+                        <span class="filter-chip" data-filter-cat="color" data-filter-label="brown">茶色</span>
+                        <span class="filter-chip" data-filter-cat="color" data-filter-label="gray">灰色</span>
+                        <span class="filter-chip" data-filter-cat="color" data-filter-label="pink">ピンク</span>
+                        <span class="filter-chip" data-filter-cat="color" data-filter-label="marble">マーブル</span>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-row" style="margin-top:10px;">
+                <div class="filter-group" style="flex:1 1 220px; min-width:200px;">
+                    <label>鼻の大きさ</label>
+                    <div class="filter-chips">
+                        <span class="filter-chip" data-filter-cat="nose_size" data-filter-label="large">大きい</span>
+                        <span class="filter-chip" data-filter-cat="nose_size" data-filter-label="small">小さい</span>
+                    </div>
+                </div>
+                <div class="filter-group" style="flex:1 1 220px; min-width:200px;">
+                    <label>毛色</label>
+                    <div class="filter-chips">
+                        <span class="filter-chip" data-filter-cat="fur_color" data-filter-label="light_fur">明るい毛色</span>
+                        <span class="filter-chip" data-filter-cat="fur_color" data-filter-label="dark_fur">暗い毛色</span>
+                    </div>
+                </div>
+                <div class="filter-group" style="flex:1 1 280px; min-width:240px;">
+                    <label>鼻の長さ</label>
+                    <div class="filter-chips">
+                        <span class="filter-chip" data-filter-cat="nose_type" data-filter-label="nose_long">長い</span>
+                        <span class="filter-chip" data-filter-cat="nose_type" data-filter-label="nose_medium">中</span>
+                        <span class="filter-chip" data-filter-cat="nose_type" data-filter-label="nose_short">短い</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="main-content">
             <div class="image-section">
                 <div class="navigation">
@@ -397,6 +525,8 @@
                         </div>
                     </div>
                 </div>
+
+                
 
                 <div class="image-info" id="imageInfo" style="display: none;">
                     <h3>画像情報</h3>
@@ -938,23 +1068,147 @@
             }
         }
 
+        // 全件（master）と表示用（filter適用後）
+        let allImages = [];
         let images = [];
         let currentImageIndex = 0;
         let currentMainLabel = null;
         let currentSubLabels = [];
         let currentDatasetSplit = null;
 
+        // 未作業の定義: is_completed が 1/true/'1' でないもの
+        function isUnworked(img) {
+            return !(img && (img.is_completed === 1 || img.is_completed === true || img.is_completed === '1'));
+        }
+
+        // 詳細フィルタ状態
+        const FILTER_STORAGE_KEYS = {
+            unworked: 'reviewFilterUnworked',
+            mainLabel: 'reviewFilterMainLabel',
+            subLabels: 'reviewFilterSubLabels',
+        };
+        let filterState = { mainLabel: 'all', subLabels: new Set() };
+
+        function loadFilterStateFromStorage() {
+            try {
+                const ml = localStorage.getItem(FILTER_STORAGE_KEYS.mainLabel);
+                filterState.mainLabel = ml || 'all';
+                const raw = localStorage.getItem(FILTER_STORAGE_KEYS.subLabels);
+                const arr = raw ? JSON.parse(raw) : [];
+                filterState.subLabels = new Set(Array.isArray(arr) ? arr : []);
+                const savedUnworked = localStorage.getItem(FILTER_STORAGE_KEYS.unworked);
+                const cb = document.getElementById('filterUnworked');
+                if (cb) cb.checked = (savedUnworked === '1');
+                const sel = document.getElementById('filterMainLabel');
+                if (sel) sel.value = filterState.mainLabel;
+                // 反映: chips
+                document.querySelectorAll('.filter-chip').forEach(chip => {
+                    const label = chip.getAttribute('data-filter-label');
+                    if (label && filterState.subLabels.has(label)) chip.classList.add('active');
+                    else chip.classList.remove('active');
+                });
+            } catch {}
+        }
+
+        function persistFilterState() {
+            try {
+                localStorage.setItem(FILTER_STORAGE_KEYS.mainLabel, filterState.mainLabel);
+                localStorage.setItem(FILTER_STORAGE_KEYS.subLabels, JSON.stringify(Array.from(filterState.subLabels)));
+            } catch {}
+        }
+
+    function updateFilterCounts() {
+            try {
+                const el = document.getElementById('filterCounts');
+                if (!el) return;
+                const total = allImages?.length || 0;
+                const unworked = allImages?.filter(isUnworked).length || 0;
+                el.textContent = `(未作業: ${unworked} / 全体: ${total})`;
+            } catch {}
+        }
+
+        // フィルタ再構築（ロードはしない）。返り値: 再構築後の配列長
+        function rebuildImagesFromAll(showOnlyUnworked) {
+            const runMainLabelFilter = (img) => {
+                const ml = (img?.main_label == null || img?.main_label === '') ? 'none' : img.main_label;
+                if (filterState.mainLabel === 'all') return true;
+                if (filterState.mainLabel === 'nose') return ml === 'nose';
+                if (filterState.mainLabel === 'none') return ml !== 'nose';
+                return true;
+            };
+            const runSubLabelsFilter = (img) => {
+                if (!filterState.subLabels || filterState.subLabels.size === 0) return true;
+                // サブラベルは AND 条件（すべて含む画像のみ）
+                let subs = [];
+                try { subs = img?.sub_labels ? (typeof img.sub_labels === 'string' ? JSON.parse(img.sub_labels) : img.sub_labels) : []; } catch {}
+                if (!Array.isArray(subs)) subs = [];
+                for (const l of filterState.subLabels) {
+                    if (!subs.includes(l)) return false;
+                }
+                return true;
+            };
+            // 構築
+            let base = allImages.slice();
+            if (showOnlyUnworked) base = base.filter(isUnworked);
+            base = base.filter(runMainLabelFilter).filter(runSubLabelsFilter);
+            images = base;
+            document.getElementById('totalImages').textContent = images.length;
+            updateFilterCounts();
+            return images.length;
+        }
+
+        function toggleViewerVisible(visible) {
+            const ids = ['imageCanvasWrapper', 'openOriginalModalBtnWrapper', 'croppedBoxWrapper'];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.style.display = visible ? '' : 'none';
+            });
+        }
+
+        function showNoImagesMessage(msg = '該当する画像がありません') {
+            const container = document.getElementById('imageContainer');
+            if (!container) return;
+            let msgEl = document.getElementById('noImagesMessage');
+            if (!msgEl) {
+                msgEl = document.createElement('div');
+                msgEl.id = 'noImagesMessage';
+                msgEl.className = 'no-images';
+                container.appendChild(msgEl);
+            }
+            msgEl.textContent = msg;
+            msgEl.style.display = 'block';
+            toggleViewerVisible(false);
+            const ci = document.getElementById('currentIndex');
+            if (ci) ci.textContent = 0;
+            const prev = document.getElementById('prevBtn');
+            const next = document.getElementById('nextBtn');
+            if (prev) prev.disabled = true;
+            if (next) next.disabled = true;
+        }
+
+        function hideNoImagesMessage() {
+            const msgEl = document.getElementById('noImagesMessage');
+            if (msgEl) msgEl.style.display = 'none';
+            toggleViewerVisible(true);
+        }
+
         // 初期化
         async function init() {
             try {
                 const response = await fetch('/api/images');
-                images = await response.json();
-                if (images.length === 0) {
-                    document.getElementById('imageContainer').innerHTML = 
-                        '<div class="no-images">imagesフォルダに画像ファイルを配置してください</div>';
+                allImages = await response.json();
+                // フィルタ初期値/詳細状態を復元
+                loadFilterStateFromStorage();
+                const checkbox = document.getElementById('filterUnworked');
+                const showOnlyUnworked = checkbox?.checked || false;
+                // 再構築
+                const len = rebuildImagesFromAll(showOnlyUnworked);
+                if (len === 0) {
+                    showNoImagesMessage('imagesフォルダに画像ファイルを配置するか、フィルタ条件を変更してください');
                     return;
                 }
-                document.getElementById('totalImages').textContent = images.length;
+                hideNoImagesMessage();
                 // URLパラメータから画像IDを取得
                 const urlParams = new URLSearchParams(window.location.search);
                 const imageId = urlParams.get('imageId');
@@ -964,13 +1218,117 @@
                         loadImage(targetIndex);
                         window.history.replaceState({}, document.title, window.location.pathname);
                     } else {
-                        loadImage(0);
+                        const lastId = localStorage.getItem('reviewLastImageId');
+                        const lastIdx = lastId ? images.findIndex(img => String(img.id) === String(lastId)) : -1;
+                        loadImage(lastIdx !== -1 ? lastIdx : 0);
                     }
                 } else {
-                    loadImage(0);
+                    const lastId = localStorage.getItem('reviewLastImageId');
+                    const lastIdx = lastId ? images.findIndex(img => String(img.id) === String(lastId)) : -1;
+                    loadImage(lastIdx !== -1 ? lastIdx : 0);
                 }
                 // 初期画像ロード後にボタン表示状態を必ず同期
                 updateOriginalModalBtnVisibility();
+                // フィルタUIイベント
+        const filterCb = document.getElementById('filterUnworked');
+                if (filterCb && !filterCb._bound) {
+                    filterCb.addEventListener('change', () => {
+                        const wantOnlyUnworked = !!filterCb.checked;
+            localStorage.setItem(FILTER_STORAGE_KEYS.unworked, wantOnlyUnworked ? '1' : '0');
+                        // 現在のIDとインデックスを保持
+                        const prevId = images?.[currentImageIndex]?.id;
+                        const prevIndex = currentImageIndex;
+                        const prevLen = images.length;
+                        const newLen = rebuildImagesFromAll(wantOnlyUnworked);
+                        if (newLen === 0) { showNoImagesMessage(); return; }
+                        hideNoImagesMessage();
+                        // 可能なら同じIDに留まる。無ければ近い位置へ
+                        let idx = 0;
+                        if (prevId != null) {
+                            const found = images.findIndex(i => i.id === prevId);
+                            if (found !== -1) {
+                                idx = found;
+                            } else {
+                                idx = Math.min(prevIndex, images.length - 1);
+                            }
+                        }
+                        loadImage(idx);
+                    });
+                    filterCb._bound = true;
+                }
+                // クラスセレクト
+                const mlSelect = document.getElementById('filterMainLabel');
+                if (mlSelect && !mlSelect._bound) {
+                    mlSelect.addEventListener('change', () => {
+                        filterState.mainLabel = mlSelect.value || 'all';
+                        persistFilterState();
+                        const wantOnlyUnworked = !!document.getElementById('filterUnworked')?.checked;
+                        // 可能なら現在IDを維持
+                        const prevId = images?.[currentImageIndex]?.id;
+                        rebuildImagesFromAll(wantOnlyUnworked);
+                        if (images.length === 0) { showNoImagesMessage(); return; }
+                        hideNoImagesMessage();
+                        let idx = 0;
+                        if (prevId != null) {
+                            const found = images.findIndex(i => i.id === prevId);
+                            if (found !== -1) idx = found; else idx = 0;
+                        }
+                        loadImage(idx);
+                    });
+                    mlSelect._bound = true;
+                }
+                // サブラベルchips
+                document.querySelectorAll('.filter-chip').forEach(chip => {
+                    if (chip._bound) return;
+                    chip.addEventListener('click', () => {
+                        const label = chip.getAttribute('data-filter-label');
+                        if (!label) return;
+                        if (filterState.subLabels.has(label)) {
+                            filterState.subLabels.delete(label);
+                            chip.classList.remove('active');
+                        } else {
+                            filterState.subLabels.add(label);
+                            chip.classList.add('active');
+                        }
+                        persistFilterState();
+                        const wantOnlyUnworked = !!document.getElementById('filterUnworked')?.checked;
+                        const prevId = images?.[currentImageIndex]?.id;
+                        rebuildImagesFromAll(wantOnlyUnworked);
+                        if (images.length === 0) { showNoImagesMessage(); return; }
+                        hideNoImagesMessage();
+                        let idx = 0;
+                        if (prevId != null) {
+                            const found = images.findIndex(i => i.id === prevId);
+                            if (found !== -1) idx = found; else idx = 0;
+                        }
+                        loadImage(idx);
+                    });
+                    chip._bound = true;
+                });
+                // クリア
+                const clear = document.getElementById('filterClear');
+                if (clear && !clear._bound) {
+                    clear.addEventListener('click', () => {
+                        filterState.mainLabel = 'all';
+                        filterState.subLabels = new Set();
+                        const ml = document.getElementById('filterMainLabel');
+                        if (ml) ml.value = 'all';
+                        document.querySelectorAll('.filter-chip.active').forEach(c => c.classList.remove('active'));
+                        persistFilterState();
+                        const wantOnlyUnworked = !!document.getElementById('filterUnworked')?.checked;
+                        const prevId = images?.[currentImageIndex]?.id;
+                        rebuildImagesFromAll(wantOnlyUnworked);
+                        if (images.length === 0) { showNoImagesMessage(); return; }
+                        hideNoImagesMessage();
+                        let idx = 0;
+                        if (prevId != null) {
+                            const found = images.findIndex(i => i.id === prevId);
+                            if (found !== -1) idx = found; else idx = 0;
+                        }
+                        loadImage(idx);
+                    });
+                    clear._bound = true;
+                }
             } catch (error) {
                 console.error('画像の読み込みに失敗しました:', error);
                 document.getElementById('imageContainer').innerHTML = 
@@ -983,6 +1341,7 @@
             if (index < 0 || index >= images.length) return;
             currentImageIndex = index;
             const image = images[index];
+            try { if (image && image.id != null) localStorage.setItem('reviewLastImageId', String(image.id)); } catch {}
             updateOriginalModalBtnVisibility();
             // 画像とcanvasをラッパー内に挿入
             const wrapper = document.getElementById('imageCanvasWrapper');
@@ -993,10 +1352,19 @@
                 if (loadingDiv) loadingDiv.style.display = 'none';
                 wrapper.innerHTML = '';
                 const img = document.createElement('img');
-                img.src = `/images/${image.filename}`;
                 img.alt = image.filename;
                 img.className = 'image-display';
                 img.style.display = 'block';
+                // エラーハンドラは src 設定前に登録
+                img.onerror = function() {
+                    const err = document.createElement('div');
+                    err.style.color = '#c00';
+                    err.style.marginTop = '8px';
+                    err.textContent = '画像の読み込みに失敗しました: ' + (image.filename || '');
+                    wrapper.appendChild(err);
+                };
+                // 先に画像ノードを追加してプレースホルダーとして表示
+                wrapper.appendChild(img);
                 img.onload = function() {
                     // 元画像サイズでcanvas生成
                     let canvas = document.createElement('canvas');
@@ -1007,11 +1375,13 @@
                     canvas.style.left = '0';
                     canvas.style.top = '0';
                     canvas.style.zIndex = '2';
-                    // 表示サイズをimgと合わせる
+                    // 表示サイズ調整
+                    // wrapper は shrink-to-fit になるため、img は width ではなく max-width を使う
                     canvas.style.width = '100%';
                     canvas.style.height = '100%';
-                    img.style.width = '100%';
+                    img.style.maxWidth = '100%';
                     img.style.height = 'auto';
+                    
                     let showCropped = false;
                     let showNoNose = false;
                     let bboxObj = null;
@@ -1054,8 +1424,11 @@
                                 0, 0, croppedCanvas.width, croppedCanvas.height
                             );
                         }
-                    } else if (!image.main_label || image.main_label === null || image.main_label === '') {
-                        // 鼻なし画像の場合、no-nose-img.pngを表示
+                    } else if (!image.main_label || image.main_label === null || image.main_label === '' || image.main_label === 'none') {
+                        // 鼻なし（未設定含む）は鼻領域プレビューに no-nose 画像を表示
+                        canvas.style.display = 'none';
+                        window.currentBbox = null;
+                        images[currentImageIndex].bbox = null;
                         showNoNose = true;
                     } else {
                         canvas.style.display = 'none';
@@ -1065,7 +1438,6 @@
                     // ラッパーをposition:relativeでimg/canvas重ねる
                     wrapper.style.position = 'relative';
                     wrapper.style.display = 'inline-block';
-                    wrapper.appendChild(img);
                     wrapper.appendChild(canvas);
                     // canvas上でbbox編集できるようイベントバインド
                     setupBboxCanvasEvents(canvas, img);
@@ -1103,6 +1475,8 @@
                         }
                     }
                 };
+                // 最後に src を設定
+                img.src = `/images/${image.filename}`;
             }
 
         // bbox描画・編集用のマウスイベント（ドラッグで新規作成/編集）
@@ -1541,17 +1915,31 @@
                 });
                 
                 if (response.ok) {
-                    // 最新データを取得して反映
-                    const imageId = images[currentImageIndex].id;
-                    const res2 = await fetch(`/api/images/${imageId}`);
+                    // 最新データ（単体）を取得して master に反映
+                    const savedId = images[currentImageIndex].id;
+                    const prevFilteredIndex = images.findIndex(i => i.id === savedId);
+                    const res2 = await fetch(`/api/images/${savedId}`);
                     if (res2.ok) {
                         const updated = await res2.json();
-                        images[currentImageIndex] = updated;
+                        const idxAll = allImages.findIndex(i => i.id === savedId);
+                        if (idxAll !== -1) allImages[idxAll] = updated;
                     }
-                    // 次の画像に移動
-                    if (currentImageIndex < images.length - 1) {
-                        nextImage();
+                    // フィルタ再構築後の遷移先を決定
+                    const wantOnlyUnworked = !!document.getElementById('filterUnworked')?.checked;
+                    rebuildImagesFromAll(wantOnlyUnworked);
+                    if (images.length === 0) {
+                        showNoImagesMessage();
+                        return;
                     }
+                    // 保存したIDが残っているなら次へ、消えていれば同じ位置（次の未作業）へ
+                    const nowIdx = images.findIndex(i => i.id === savedId);
+                    let targetIdx = 0;
+                    if (nowIdx !== -1) {
+                        targetIdx = Math.min(nowIdx + 1, images.length - 1);
+                    } else {
+                        targetIdx = Math.min(Math.max(prevFilteredIndex, 0), images.length - 1);
+                    }
+                    loadImage(targetIdx);
                 } else {
                     alert('ラベルの保存に失敗しました');
                 }
@@ -1813,10 +2201,22 @@
                 if (response.ok) {
                     displayExecuteResult(result);
                     
-                    if (images.length > 0) {
+                    if (images.length >= 0) {
                         const response = await fetch('/api/images');
-                        images = await response.json();
-                        loadImage(currentImageIndex);
+                        allImages = await response.json();
+                        const wantOnlyUnworked = !!document.getElementById('filterUnworked')?.checked;
+                        const currentId = images?.[currentImageIndex]?.id;
+                        rebuildImagesFromAll(wantOnlyUnworked);
+                        if (images.length === 0) { showNoImagesMessage(); }
+                        else {
+                            hideNoImagesMessage();
+                            let idx = 0;
+                            if (currentId != null) {
+                                const found = images.findIndex(i => i.id === currentId);
+                                idx = found !== -1 ? found : 0;
+                            }
+                            loadImage(idx);
+                        }
                     }
                 } else {
                     alert(result.error || '自動分割に失敗しました');

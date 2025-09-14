@@ -70,7 +70,7 @@ from pathlib import Path
 import random
 import hashlib
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='app/static', static_url_path='/static')
 app.config['SECRET_KEY'] = 'dog-nose-labeling-secret-key'
 
 @app.route('/export')
