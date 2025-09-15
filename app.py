@@ -229,6 +229,11 @@ def index():
 def review():
     return render_template('review.html', active_page='review')
 
+# 使用方法ページ
+@app.route('/usage')
+def usage():
+    return render_template('usage.html', active_page='usage')
+
 @app.route('/api/images')
 def get_images():
     conn = sqlite3.connect('labels.db')
