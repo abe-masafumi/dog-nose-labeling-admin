@@ -129,12 +129,7 @@ images/
 *.tiff
 *.webp
 
-# データベースファイル
-*.db
-*.sqlite
-*.sqlite3
-labels.db
-labels.db*
+
 
 # エクスポートファイル
 labels_export_*.json
@@ -164,8 +159,9 @@ ehthumbs.db
 Thumbs.db
 
 # エディタ固有ファイル
-.vscode/
-.idea/
+labels-*.db
+# labels.dbは管理対象
+!labels.db
 *.swp
 *.swo
 *~

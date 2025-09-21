@@ -1,53 +1,25 @@
-## 🤖 YOLOによる自動鼻検出バッチ
+pip install -r requirements.txt
+dog-nose-labeling-admin/
+dataset/
 
-YOLOv8モデル（例: models/8_30_best.pt）を使い、未手動修正画像に自動で鼻のバウンディングボックス（bbox）を付与できます。
-
-### 必要なもの
-- `ultralytics` および `opencv-python` パッケージ（requirements.txtに記載済み）
-- 学習済みYOLOモデル（例: `models/8_30_best.pt`）
-
-### 使い方
-1. `models/8_30_best.pt` をプロジェクト内に配置
-2. 下記コマンドを実行
-
-```bash
-python app.py detect_nose
-```
-
-
-### 動作仕様
-- is_manual=1（手動修正済み）の画像は上書きしません
-- bboxは `{x_min, y_min, x_max, y_max}` 形式でDBに保存されます
-- main_label（鼻あり/なし）は自動で更新されます
-- **is_completed（作業済みフラグ）は自動検出バッチでは変更されません**（人によるチェック完了のみ手動でON）
-- 既存のサブラベルや分割情報は上書きされません
-- UI上で自動検出結果が確認できます
-
-### 注意
-- バッチ実行前に `labels.db` のバックアップを推奨します
-- 旧形式（x, y, width, height）で保存されたbboxはUIで正しく表示されません。必要に応じて修正・再実行してください
 # 🐕 犬の鼻ラベリング管理ツール
 
-犬の顔画像から「犬の鼻が含まれているか」を判定し、ラベルを付与・管理するためのWebベースのラベリング管理ツールです。機械学習用データセットの作成を効率的に行うことができます。
+犬の顔画像から「犬の鼻が含まれているか」を判定し、ラベルを付与・管理するためのWebベースのラベリング管理ツールです。機械学習用データセットの作成を効率的に行えます。
 
-## 📋 機能概要
+---
 
-### 主要機能
-- **画像表示・ラベリング**: 1枚ずつ画像を表示し、直感的なGUIでラベル付与
-- **キーボードショートカット**: 効率的なラベリング作業をサポート
-- **ラベル管理**: SQLiteデータベースによる確実なデータ保存
-- **データエクスポート**: JSON/CSV形式でのラベル結果出力
-- **データセット分割**: 機械学習用のtrain/val/test分割対応
-- **フォルダ分割出力**: 機械学習フレームワーク用の自動フォルダ構造生成
+## 📋 主な機能
 
-### ラベル種別
-- **メインラベル**
-  - `nose`: 犬の鼻が含まれている画像
-  - ラベルなし: 犬の鼻が含まれていない画像
+- **画像ラベリング**: 画像を1枚ずつ表示し、直感的なGUIでラベル付与・編集
+- **レビュー画面**: フィルタ・検索・未作業絞り込み・一括確認
+- **重複画像検出・削除**: sha256/pHashによる重複・類似画像グループ化と論理削除
+- **自動鼻検出バッチ**: YOLOv8モデルによる鼻bbox自動付与（コマンド実行）
+- **データセット自動分割**: train/val/test比率・詳細ターゲット指定で自動分割
+- **データエクスポート**: JSON/CSV/YOLO形式・分割済みフォルダ・個別ZIP出力
+- **論理削除**: 画像・ラベルはDB上で論理削除、全画面で除外
+- **キーボードショートカット**: 効率的なラベリング作業
 
-- **サブラベル**（任意）
-  - 鼻の向き: `front`（正面）、`side`（横向き）、`tilted`（斜め）
-  - 鼻の状態: `wet`（濡れている）、`dry`（乾いている）、`blurred`（ぼやけている）
+---
 
 ## 🚀 セットアップ
 
@@ -56,97 +28,85 @@ python app.py detect_nose
 - Flask 2.3.3以上
 
 ### インストール手順
-
-1. **リポジトリのクローン**
 ```bash
 git clone https://github.com/abe-masafumi/dog-nose-labeling-admin.git
 cd dog-nose-labeling-admin
-```
-
-2. **依存関係のインストール**
-```bash
+python3 -m venv venv
 source venv/bin/activate
-
 pip install -r requirements.txt
-```
-
-3. **画像フォルダの準備**
-```bash
 mkdir images
-# imagesフォルダに犬の顔画像（JPEG/PNG形式）を配置
+# images/ に犬の顔画像（JPEG/PNG）を配置
 ```
 
-4. **アプリケーションの起動**
+### アプリ起動
 ```bash
 python app.py
+# ブラウザで http://localhost:8080 を開く
 ```
 
-5. **ブラウザでアクセス**
-```
-http://localhost:8080
-```
+---
 
-## 📁 プロジェクト構造
+## �️ 画面構成
 
-```
-dog-nose-labeling-admin/
-├── app.py                 # メインアプリケーション
-├── templates/
-│   └── index.html        # Webインターフェース
-├── images/               # 画像ファイル格納フォルダ
-├── labels.db            # SQLiteデータベース（自動生成）
-├── dataset/             # エクスポート用フォルダ（自動生成）
-├── requirements.txt     # Python依存関係
-└── README.md           # このファイル
-```
+- **ラベリング** `/` : 画像1枚ずつラベル付与・bbox編集・保存・個別エクスポート
+- **レビュー** `/review` : フィルタ・検索・未作業絞り込み・一括確認
+- **エクスポート** `/export` : JSON/CSV/YOLO/分割済みデータセット出力・自動分割
+- **重複確認** `/duplicates` : sha256/pHashによる重複・類似画像グループ化と論理削除
+- **使用方法** `/usage` : 操作ガイド・ショートカット一覧
 
-## 🎯 使用方法
+---
 
-### 基本的なラベリング手順
+## 🎯 ラベリング・レビュー手順
 
-1. **画像の配置**: `images/`フォルダに犬の顔画像を配置
-2. **アプリケーション起動**: `python app.py`でサーバーを開始
-3. **ラベリング作業**:
-   - 画像が自動的に表示されます
-   - メインラベル（鼻あり/鼻なし）を選択
-   - 必要に応じてサブラベルを追加
-   - データセット分割（train/val/test）を指定
-   - 「ラベルを保存」ボタンで保存
+1. `images/` フォルダに画像を配置
+2. `python app.py` でサーバー起動
+3. `/` で画像を1枚ずつラベリング
+   - メインラベル（鼻あり/なし）・サブラベル・分割・bboxを設定
+   - 「ラベルを保存」でDBに反映
+4. `/review` でフィルタ・検索・未作業絞り込み・一括確認
+5. `/duplicates` で重複・類似画像を検出し、不要画像を論理削除
+6. `/export` でデータセット出力・自動分割
 
-### キーボードショートカット
+---
 
-| キー | 機能 |
-|------|------|
-| `1` | 鼻ありラベル |
-| `2` | 鼻なしラベル |
-| `F` | 正面向き |
-| `S` | 横向き |
-| `T` | 斜め向き |
-| `W` | 濡れている |
-| `D` | 乾いている |
-| `B` | ぼやけている |
-| `←` | 前の画像 |
-| `→` | 次の画像 |
-| `Enter` | ラベル保存 |
+## 🏷️ ラベル仕様
 
-### データエクスポート
+- **メインラベル**: `nose`（鼻あり）/ 未設定（鼻なし）
+- **サブラベル**: 向き（front/side/tilted）、鮮明度（clear/blurred）、色（black/brown/gray/pink/marble）、大きさ（large/small）、毛色（light_fur/dark_fur）、鼻の長さ（nose_long/nose_medium/nose_short）
+- **分割**: train/val/test
+- **bbox**: {x_min, y_min, x_max, y_max} 形式
 
-#### JSON/CSV形式
-- 「JSON」または「CSV」ボタンでラベル結果をダウンロード
-- ファイル名: `labels_export_YYYYMMDD_HHMMSS.json/csv`
+---
 
-#### データセット分割出力
-- 「📁 データセット出力」ボタンで機械学習用フォルダ構造を生成
-- 出力構造:
-```
-dataset/
-├── train/
-│   └── nose/
-├── val/
-│   └── nose/
-└── test/
-    └── nose/
-```
+## 🤖 YOLO自動鼻検出バッチ
+
+YOLOv8モデルで未手動修正画像に自動で鼻bboxを付与できます。
+
+### 使い方
+1. `models/8_30_best.pt` を配置
+2. `python app.py detect_nose` を実行
+
+> is_manual=1（手動修正済み）は上書きしません。bboxは {x_min, y_min, x_max, y_max} で保存。main_labelも自動更新。is_completedは自動バッチでは変更しません。
+
+---
+
+## 🔁 重複画像検出・論理削除
+
+- `/duplicates` 画面でsha256/pHashによる重複・類似画像グループを検出
+- UI上で不要画像を論理削除（DB上でdeleted_atセット、全画面で除外）
+- 削除後は再検出せずUIのみ即時反映
+
+---
+
+## 📤 データエクスポート
+
+- `/export` 画面で以下が可能
+  - JSON/CSV形式で全ラベル出力
+  - YOLO形式（画像＋ラベルtxt）で個別/一括ZIP出力
+  - train/val/test分割済みフォルダ構造で出力
+  - **自動分割**: 比率・詳細ターゲット指定で分割、プレビュー・実行
+
+---
 
 ## 🗄️ データベース構造
 
@@ -158,10 +118,12 @@ dataset/
 | main_label     | TEXT      | メインラベル               |
 | sub_labels     | TEXT      | サブラベル（JSON形式）     |
 | dataset_split  | TEXT      | データセット分割           |
+| bbox           | TEXT      | バウンディングボックス     |
+| is_completed   | INTEGER   | 作業済みフラグ             |
+| is_manual      | TEXT      | 手動/自動/未設定           |
+| deleted_at     | TIMESTAMP | 論理削除日時               |
 | created_at     | TIMESTAMP | 作成日時                   |
 | updated_at     | TIMESTAMP | 更新日時                   |
-| is_completed   | INTEGER   | 作業済みフラグ             |
-| bbox           | TEXT      | バウンディングボックス（JSON形式） |
 
 ### imagesテーブル
 | カラム | 型 | 説明 |
@@ -170,45 +132,65 @@ dataset/
 | filename | TEXT | ファイル名 |
 | filepath | TEXT | ファイルパス |
 | file_size | INTEGER | ファイルサイズ |
+| deleted_at | TIMESTAMP | 論理削除日時 |
 | created_at | TIMESTAMP | 作成日時 |
+
+---
 
 ## 🔧 API エンドポイント
 
 | エンドポイント | メソッド | 説明 |
 |---------------|---------|------|
-| `/` | GET | メインページ |
+| `/` | GET | ラベリング画面 |
+| `/review` | GET | レビュー画面 |
+| `/export` | GET | エクスポート画面 |
+| `/duplicates` | GET | 重複確認画面 |
+| `/usage` | GET | 使用方法ガイド |
 | `/api/images` | GET | 全画像情報取得 |
 | `/api/images/<id>` | GET | 特定画像情報取得 |
 | `/api/labels` | POST | ラベル保存 |
 | `/api/export/json` | GET | JSON形式エクスポート |
 | `/api/export/csv` | GET | CSV形式エクスポート |
 | `/api/export/dataset` | GET | データセット分割出力 |
+| `/api/export_single/<id>` | GET | 画像1枚分のYOLOデータセットZIP |
+| `/api/duplicates` | GET | 重複/類似画像グループ取得 |
+| `/api/duplicates/delete` | POST | 画像の論理削除 |
+| `/api/auto-split` | POST | データセット自動分割実行 |
+| `/api/auto-split/settings` | GET/POST | 自動分割設定取得・保存 |
 | `/images/<filename>` | GET | 画像ファイル配信 |
-
-## 🔮 将来的な拡張予定
-
-- **半自動ラベリング支援**: 機械学習モデルによる推定ラベル提示
-- **複数ユーザー対応**: 同時ラベリング・権限管理
-- **アクティブラーニング**: 曖昧なデータの優先提示
-- **クラウドストレージ連携**: S3/Firebase対応
-- **アノテーションログ**: 作業履歴の詳細管理
-
-## 🤝 コントリビューション
-
-プルリクエストやイシューの報告を歓迎します。
-
-## 📄 ライセンス
-
-このプロジェクトはMITライセンスの下で公開されています。
-
-## 👤 作成者
-
-- **安倍将史** ([@abe-masafumi](https://github.com/abe-masafumi))
-- **Devin AI** - 実装支援
 
 ---
 
-**Link to Devin run**: https://app.devin.ai/sessions/a157972900e64fc0966e757cf8f7a9c5
+## ⌨️ キーボードショートカット
+
+| キー | 機能 |
+|------|------|
+| `1` | 鼻ありラベル |
+| `2` | 鼻なしラベル |
+| `F` | 正面向き |
+| `S` | 横向き |
+| `T` | 斜め向き |
+| `B` | ぼやけ |
+| `C` | 鮮明 |
+| `K` | 黒 |
+| `R` | 茶色 |
+| `G` | 灰色 |
+| `P` | ピンク |
+| `M` | マーブル |
+| `L` | 大きい |
+| `Q` | 小さい |
+| `J` | 明るい毛色 |
+| `N` | 暗い毛色 |
+| `O` | 長い鼻 |
+| `Shift+M` | 中くらい鼻 |
+| `Shift+S` | 短い鼻 |
+| `←` | 前の画像 |
+| `→` | 次の画像 |
+| `Enter` | ラベル保存 |
 
 
 python main.py sample.jpg "0 0.190278 0.200391 0.183333 0.103125"   
+
+## 📝 ライセンス・コントリビューション
+
+MITライセンス。プルリク・イシュー歓迎。
