@@ -731,6 +731,7 @@
                 <h4>クラス</h4>
                 <div class="filter-options" id="mainLabelFilters">
                     <div class="filter-option" data-value="nose">🐽 鼻あり</div>
+                    <div class="filter-option" data-value="none">🚫 鼻なし</div>
                 </div>
             </div>
             <div class="filter-group">
@@ -829,6 +830,7 @@
                             <h4>クラス</h4>
                             <div class="modal-label-options" id="modalMainLabels">
                                 <div class="modal-label-option" data-value="nose">🐽 鼻あり</div>
+                                <div class="modal-label-option" data-value="none">🚫 鼻なし</div>
                             </div>
                         </div>
                         <!-- サブラベルカテゴリ名を上、選択肢を下に横並びで配置 -->
@@ -934,6 +936,7 @@
         const LABEL_JA_MAP = {
             // メインラベル
             nose: "鼻あり",
+            none: "鼻なし",
             // 鼻の向き
             front: "正面",
             side: "横向き",
@@ -1022,8 +1025,10 @@
 
                 // --- ここでクライアント側フィルタリングを適用 ---
                 results = results.filter(result => {
+                    // メインラベルは null/空 を 'none' と同義で扱う
+                    const normalizeMain = (ml) => (ml === null || ml === '' ? 'none' : ml);
                     // メインラベル
-                    if (selectedFilters.mainLabel && result.main_label !== selectedFilters.mainLabel) {
+                    if (selectedFilters.mainLabel && normalizeMain(result.main_label) !== selectedFilters.mainLabel) {
                         return false;
                     }
 
@@ -1094,12 +1099,13 @@
                 const subLabelsHtml = result.sub_labels.map(label => 
                     `<span class="label-tag">${toJapaneseLabel(label)}</span>`
                 ).join('');
+                const normalizedMain = (result.main_label === null || result.main_label === '' ? 'none' : result.main_label);
                 item.innerHTML = `
                     <img src="/images/${result.filename}" alt="${result.filename}" class="result-image" onerror="this.style.display='none'">
                     <div class="result-info">
                         <div class="result-filename" title="クリックでコピー">${result.filename}</div>
                         <div class="result-labels">
-                            ${result.main_label ? `<span class="label-tag main">${toJapaneseLabel(result.main_label)}</span>` : ''}
+                            ${normalizedMain ? `<span class="label-tag main">${toJapaneseLabel(normalizedMain)}</span>` : ''}
                             ${subLabelsHtml}
                             ${result.dataset_split ? `<span class="label-tag dataset">${toJapaneseLabel(result.dataset_split)}</span>` : ''}
                         </div>
