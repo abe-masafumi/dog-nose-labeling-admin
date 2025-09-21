@@ -1416,6 +1416,8 @@
                                 noNoseImg.src = '/static/no-nose-img.png';
                                 noNoseImg.alt = '鼻なし画像';
                                 noNoseImg.className = 'no-nose-img';
+                                noNoseImg.style.width = '100%';
+                                noNoseImg.style.height = 'auto';
                                 noNoseImg.style.maxWidth = '100%';
                                 noNoseImg.style.maxHeight = '400px';
                                 noNoseImg.style.borderRadius = '12px';
@@ -1429,11 +1431,90 @@
                         } else {
                             cropWrapper.style.display = 'none';
                         }
+                        // 初期レイアウト調整（画面幅に合わせて縮小）
+                        updateCroppedPreviewLayout();
                     }
                 };
                 // 最後に src を設定
                 img.src = `/images/${image.filename}`;
             }
+
+        /**
+         * 鼻領域プレビュー（croppedBoxCanvas / no-nose 画像）のレイアウトを
+         * 画面サイズに合わせて縮小しつつ縦横比を維持して調整する
+         */
+        function updateCroppedPreviewLayout() {
+            const cropWrapper = document.getElementById('croppedBoxWrapper');
+            if (!cropWrapper || cropWrapper.style.display === 'none') return;
+            const croppedCanvas = document.getElementById('croppedBoxCanvas');
+            const parent = croppedCanvas ? croppedCanvas.parentElement : null;
+            const parentW = Math.max(0, parent ? parent.offsetWidth : 400);
+
+            // Canvas表示時のサイズ調整
+            if (croppedCanvas && croppedCanvas.style.display !== 'none') {
+                const bboxObj = window.currentBbox;
+                if (bboxObj && bboxObj.x_min != null && bboxObj.y_min != null && bboxObj.x_max != null && bboxObj.y_max != null) {
+                    const cropW = bboxObj.x_max - bboxObj.x_min;
+                    const cropH = bboxObj.y_max - bboxObj.y_min;
+                    const aspect = cropW / cropH || 1;
+                    // 親幅に収まるように最大幅を決定（左右余白の分だけマージンを引く）
+                    const maxW = Math.max(50, Math.min(400, parentW - 32));
+                    let previewW = maxW;
+                    let previewH = Math.round(maxW / aspect);
+                    if (previewH > 400) {
+                        previewH = 400;
+                        previewW = Math.round(400 * aspect);
+                    }
+                    // CSSの幅・高さのみを変更（canvasの描画内容はCSSスケールで維持）
+                    croppedCanvas.style.width = previewW + 'px';
+                    croppedCanvas.style.height = previewH + 'px';
+                    croppedCanvas.style.aspectRatio = String(aspect);
+                    // 画面からのはみ出し防止（万一の場合に幅を100%に）
+                    if (parent && previewW > parentW) {
+                        croppedCanvas.style.width = '100%';
+                        croppedCanvas.style.height = 'auto';
+                    }
+                }
+            }
+
+            // 鼻なし画像表示時のサイズ調整
+            const noNoseImg = cropWrapper.querySelector('.no-nose-img');
+            if (noNoseImg && noNoseImg.style.display !== 'none') {
+                noNoseImg.style.width = '100%';
+                noNoseImg.style.height = 'auto';
+                const safeMax = Math.max(50, Math.min(400, parentW - 32));
+                noNoseImg.style.maxWidth = safeMax + 'px';
+            }
+        }
+
+        // リサイズ時にもプレビューがはみ出さないよう調整（即時反映 + 後追いデバウンス）
+        (function(){
+            let __resizeTimer = null;
+            window.addEventListener('resize', () => {
+                // まず即時に一度反映（描画コストの低いCSS適用中心）
+                if (typeof requestAnimationFrame === 'function') {
+                    requestAnimationFrame(updateCroppedPreviewLayout);
+                } else {
+                    updateCroppedPreviewLayout();
+                }
+                // 後追いで安定値に再調整（余計な連続処理を抑制）
+                if (__resizeTimer) clearTimeout(__resizeTimer);
+                __resizeTimer = setTimeout(() => {
+                    updateCroppedPreviewLayout();
+                }, 80);
+            });
+
+            // 親要素の幅変化（グリッドの折り返し等）にも即応
+            try {
+                const cropWrapper = document.getElementById('croppedBoxWrapper');
+                if (cropWrapper && 'ResizeObserver' in window) {
+                    const ro = new ResizeObserver(() => {
+                        updateCroppedPreviewLayout();
+                    });
+                    ro.observe(cropWrapper);
+                }
+            } catch {}
+        })();
 
         // bbox描画・編集用のマウスイベント（ドラッグで新規作成/編集）
         function setupBboxCanvasEvents(canvas, img) {

@@ -14,8 +14,8 @@ def detect_nose_for_all_images(model_path='models/8_30_best.pt'):
     # is_manual=1以外の画像を抽出
     cursor.execute('''
         SELECT i.filepath, i.id FROM images i
-        LEFT JOIN labels l ON i.filepath = l.image_path
-        WHERE l.is_manual IS NULL
+        LEFT JOIN labels l ON i.filepath = l.image_path AND l.deleted_at IS NULL
+        WHERE i.deleted_at IS NULL AND l.is_manual IS NULL
     ''')
     rows = cursor.fetchall()
     if not rows:
@@ -69,6 +69,7 @@ import shutil
 from pathlib import Path
 import random
 import hashlib
+from collections import defaultdict
 
 app = Flask(__name__, static_folder='app/static', static_url_path='/static')
 app.config['SECRET_KEY'] = 'dog-nose-labeling-secret-key'
@@ -86,8 +87,8 @@ def export_single_image_dataset(image_id):
     cursor.execute('''
         SELECT i.filename, i.filepath, l.main_label, l.bbox
         FROM images i
-        LEFT JOIN labels l ON i.filepath = l.image_path
-        WHERE i.id = ?
+        LEFT JOIN labels l ON i.filepath = l.image_path AND l.deleted_at IS NULL
+        WHERE i.id = ? AND i.deleted_at IS NULL
     ''', (image_id,))
     row = cursor.fetchone()
     conn.close()
@@ -194,8 +195,21 @@ def init_db():
         if 'is_completed' not in cols:
             cursor.execute("ALTER TABLE labels ADD COLUMN is_completed INTEGER DEFAULT 0")
             conn.commit()
+        # 論理削除用 deleted_at を labels に追加
+        if 'deleted_at' not in cols:
+            cursor.execute("ALTER TABLE labels ADD COLUMN deleted_at TIMESTAMP NULL")
+            conn.commit()
     except Exception as e:
         # 追加に失敗しても続行（既存環境では既に存在する想定）
+        pass
+    # 互換マイグレーション: images に deleted_at 列が無ければ追加
+    try:
+        cursor.execute("PRAGMA table_info(images)")
+        cols = [r[1] for r in cursor.fetchall()]
+        if 'deleted_at' not in cols:
+            cursor.execute("ALTER TABLE images ADD COLUMN deleted_at TIMESTAMP NULL")
+            conn.commit()
+    except Exception:
         pass
     conn.close()
 
@@ -229,6 +243,161 @@ def index():
 def review():
     return render_template('review.html', active_page='review')
 
+# 使用方法ページ
+@app.route('/usage')
+def usage():
+    return render_template('usage.html', active_page='usage')
+
+@app.route('/duplicates')
+def duplicates_page():
+    return render_template('duplicates.html', active_page='duplicates')
+
+# ================= Duplicate detection APIs (new) =================
+def _compute_sha256(file_path: str) -> str:
+    h = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+def _compute_phash(file_path: str):
+    """Compute 64-bit perceptual hash. Returns int or None on failure."""
+    try:
+        import cv2
+        import numpy as np
+        img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            return None
+        img = cv2.resize(img, (32, 32), interpolation=cv2.INTER_AREA)
+        img = img.astype('float32')
+        dct = cv2.dct(img)
+        dct_low = dct[:8, :8]
+        med = float(np.median(dct_low))
+        bits = 0
+        for r in range(8):
+            for c in range(8):
+                bits = (bits << 1) | (1 if dct_low[r, c] > med else 0)
+        return bits & ((1 << 64) - 1)
+    except Exception:
+        return None
+
+def _hamming64(a: int, b: int) -> int:
+    x = (a ^ b) & ((1 << 64) - 1)
+    return x.bit_count() if hasattr(int, 'bit_count') else bin(x).count('1')
+
+@app.route('/api/duplicates')
+def api_duplicates():
+    """Detect duplicate or similar images under ./images.
+    Query params:
+      - method: sha256 (default) or phash
+      - threshold: int hamming threshold for phash (default 5)
+    """
+    method = (request.args.get('method') or 'sha256').lower()
+    try:
+        threshold = int(request.args.get('threshold', '5'))
+    except ValueError:
+        threshold = 5
+
+    images_dir = 'images'
+    if not os.path.isdir(images_dir):
+        return jsonify({'error': f'images ディレクトリが見つかりません: {os.path.abspath(images_dir)}'}), 400
+
+    exts = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
+    files = [f for f in os.listdir(images_dir) if os.path.splitext(f)[1].lower() in exts]
+    # DBの論理削除済み画像は除外
+    try:
+        conn = sqlite3.connect('labels.db')
+        cur = conn.cursor()
+        cur.execute("SELECT filename FROM images WHERE deleted_at IS NOT NULL")
+        deleted_files = {r[0] for r in cur.fetchall()}
+        conn.close()
+        files = [f for f in files if f not in deleted_files]
+    except Exception:
+        pass
+    files.sort()
+
+    if method == 'sha256':
+        buckets = defaultdict(list)
+        for fn in files:
+            path = os.path.join(images_dir, fn)
+            try:
+                h = _compute_sha256(path)
+            except Exception:
+                continue
+            buckets[h].append(fn)
+        groups = [sorted(v) for v in buckets.values() if len(v) >= 2]
+        return jsonify({'method': 'sha256', 'groups': groups, 'total_files': len(files)})
+
+    if method == 'phash':
+        # deps check
+        try:
+            import cv2  # noqa
+            import numpy as np  # noqa
+        except Exception:
+            return jsonify({'error': 'phash には OpenCV と NumPy が必要です（requirements: opencv-python）。'}), 400
+        phashes = []
+        for fn in files:
+            path = os.path.join(images_dir, fn)
+            h = _compute_phash(path)
+            if h is not None:
+                phashes.append((fn, h))
+        # bucket on top bits to reduce comparisons
+        buckets = defaultdict(list)
+        for fn, h in phashes:
+            key = (h >> 48) & 0xFFFF
+            buckets[key].append((fn, h))
+        groups = []
+        for items in buckets.values():
+            used = set()
+            n = len(items)
+            for i in range(n):
+                if i in used: continue
+                base_fn, base_h = items[i]
+                group = [base_fn]
+                used.add(i)
+                for j in range(i+1, n):
+                    if j in used: continue
+                    fn_j, h_j = items[j]
+                    if _hamming64(base_h, h_j) <= threshold:
+                        group.append(fn_j)
+                        used.add(j)
+                if len(group) >= 2:
+                    group.sort()
+                    groups.append(group)
+        groups.sort(key=lambda g: (-len(g), g))
+        return jsonify({'method': 'phash', 'threshold': threshold, 'groups': groups, 'total_files': len(files)})
+
+    return jsonify({'error': f'未知のmethod: {method}'}), 400
+
+@app.route('/api/duplicates/delete', methods=['POST'])
+def api_duplicates_delete():
+    """Logical delete a chosen file: set deleted_at in images and labels.
+    body: { filename: string }
+    """
+    data = request.get_json(silent=True) or {}
+    filename = data.get('filename')
+    if not filename:
+        return jsonify({'error': 'filename は必須です'}), 400
+    # mark as deleted in DB if exists
+    conn = sqlite3.connect('labels.db')
+    cursor = conn.cursor()
+    try:
+        # fetch image record
+        cursor.execute('SELECT id, filepath FROM images WHERE filename = ?', (filename,))
+        row = cursor.fetchone()
+        if row:
+            image_id, filepath = row
+            # logical delete: set deleted_at (now)
+            cursor.execute('UPDATE labels SET deleted_at = CURRENT_TIMESTAMP WHERE image_path = ?', (filepath,))
+            cursor.execute('UPDATE images SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', (image_id,))
+            conn.commit()
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': f'DB削除に失敗: {e}'}), 500
+    conn.close()
+    return jsonify({'success': True})
+
 @app.route('/api/images')
 def get_images():
     conn = sqlite3.connect('labels.db')
@@ -238,7 +407,8 @@ def get_images():
         SELECT i.id, i.filename, i.filepath, 
                l.main_label, l.sub_labels, l.dataset_split, l.bbox, l.is_completed, l.is_manual
         FROM images i
-        LEFT JOIN labels l ON i.filepath = l.image_path
+        LEFT JOIN labels l ON i.filepath = l.image_path AND l.deleted_at IS NULL
+        WHERE i.deleted_at IS NULL
         ORDER BY i.id
     ''')
     images = []
@@ -266,8 +436,8 @@ def get_image(image_id):
         SELECT i.id, i.filename, i.filepath, 
                l.main_label, l.sub_labels, l.dataset_split, l.bbox, l.is_manual
         FROM images i
-        LEFT JOIN labels l ON i.filepath = l.image_path
-        WHERE i.id = ?
+        LEFT JOIN labels l ON i.filepath = l.image_path AND l.deleted_at IS NULL
+        WHERE i.id = ? AND i.deleted_at IS NULL
     ''', (image_id,))
     row = cursor.fetchone()
     if row:
@@ -340,7 +510,7 @@ def export_dataset():
         SELECT i.filepath, l.main_label, l.dataset_split, l.bbox, l.is_completed
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
-        WHERE l.is_completed = 1 AND l.dataset_split IS NOT NULL
+        WHERE i.deleted_at IS NULL AND l.deleted_at IS NULL AND l.is_completed = 1 AND l.dataset_split IS NOT NULL
     ''')
     
     base_dir = 'data'
@@ -442,14 +612,19 @@ def filter_images():
         SELECT i.id, i.filename, i.filepath, 
                l.main_label, l.sub_labels, l.dataset_split
         FROM images i
-        LEFT JOIN labels l ON i.filepath = l.image_path
-        WHERE l.is_completed = 1
+        LEFT JOIN labels l ON i.filepath = l.image_path AND l.deleted_at IS NULL
+        WHERE i.deleted_at IS NULL AND l.is_completed = 1
     '''
     params = []
     
     if main_label:
-        query += ' AND l.main_label = ?'
-        params.append(main_label)
+        if main_label == 'none':
+            # 'none' は NULL/空/"none" を同義として扱う
+            query += ' AND (l.main_label IS NULL OR l.main_label = "" OR l.main_label = ?)'
+            params.append('none')
+        else:
+            query += ' AND l.main_label = ?'
+            params.append(main_label)
     
     if dataset_split:
         query += ' AND l.dataset_split = ?'
@@ -515,7 +690,7 @@ def auto_split_dataset():
         SELECT i.id, i.filepath, l.main_label, l.sub_labels, l.dataset_split
         FROM images i
         JOIN labels l ON i.filepath = l.image_path
-        WHERE l.is_completed = 1
+        WHERE i.deleted_at IS NULL AND l.deleted_at IS NULL AND l.is_completed = 1
         ORDER BY i.id
     ''')
 
@@ -624,13 +799,13 @@ def auto_split_dataset():
 
         try:
             # 既存の分割結果をクリア（対象: is_completed=1）
-            cursor.execute("UPDATE labels SET dataset_split = NULL, updated_at = CURRENT_TIMESTAMP WHERE is_completed = 1")
+            cursor.execute("UPDATE labels SET dataset_split = NULL, updated_at = CURRENT_TIMESTAMP WHERE is_completed = 1 AND deleted_at IS NULL")
             for item in train_images:
-                cursor.execute("UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+                cursor.execute("UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP WHERE image_path = ? AND deleted_at IS NULL", (item['filepath'],))
             for item in val_images:
-                cursor.execute("UPDATE labels SET dataset_split = 'val', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+                cursor.execute("UPDATE labels SET dataset_split = 'val', updated_at = CURRENT_TIMESTAMP WHERE image_path = ? AND deleted_at IS NULL", (item['filepath'],))
             for item in test_images:
-                cursor.execute("UPDATE labels SET dataset_split = 'test', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+                cursor.execute("UPDATE labels SET dataset_split = 'test', updated_at = CURRENT_TIMESTAMP WHERE image_path = ? AND deleted_at IS NULL", (item['filepath'],))
             # 実行成功時のみ設定を新規保存（履歴追加）
             cursor.execute('''
                 INSERT INTO auto_split_settings (train_percent, val_percent, test_percent, targets, updated_at)
@@ -950,13 +1125,28 @@ def auto_split_dataset():
     # 実更新
     try:
         # 既存の分割結果をクリア（対象: is_completed=1）
-        cursor.execute("UPDATE labels SET dataset_split = NULL, updated_at = CURRENT_TIMESTAMP WHERE is_completed = 1")
+        cursor.execute(
+            "UPDATE labels SET dataset_split = NULL, updated_at = CURRENT_TIMESTAMP "
+            "WHERE is_completed = 1 AND deleted_at IS NULL"
+        )
         for item in train_images:
-            cursor.execute("UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+            cursor.execute(
+                "UPDATE labels SET dataset_split = 'train', updated_at = CURRENT_TIMESTAMP "
+                "WHERE image_path = ? AND deleted_at IS NULL",
+                (item['filepath'],)
+            )
         for item in val_images:
-            cursor.execute("UPDATE labels SET dataset_split = 'val', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+            cursor.execute(
+                "UPDATE labels SET dataset_split = 'val', updated_at = CURRENT_TIMESTAMP "
+                "WHERE image_path = ? AND deleted_at IS NULL",
+                (item['filepath'],)
+            )
         for item in test_images:
-            cursor.execute("UPDATE labels SET dataset_split = 'test', updated_at = CURRENT_TIMESTAMP WHERE image_path = ?", (item['filepath'],))
+            cursor.execute(
+                "UPDATE labels SET dataset_split = 'test', updated_at = CURRENT_TIMESTAMP "
+                "WHERE image_path = ? AND deleted_at IS NULL",
+                (item['filepath'],)
+            )
         # 実行成功時のみ設定を新規保存（履歴追加）
         cursor.execute('''
             INSERT INTO auto_split_settings (train_percent, val_percent, test_percent, targets, updated_at)
@@ -1058,6 +1248,17 @@ def save_auto_split_settings():
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):
+    # 論理削除済みなら 404
+    try:
+        conn = sqlite3.connect('labels.db')
+        cur = conn.cursor()
+        cur.execute('SELECT deleted_at FROM images WHERE filename = ?', (filename,))
+        row = cur.fetchone()
+        conn.close()
+        if row and row[0] is not None:
+            return jsonify({'error': 'deleted'}), 404
+    except Exception:
+        pass
     return send_file(os.path.join('images', filename))
 
 if __name__ == '__main__':

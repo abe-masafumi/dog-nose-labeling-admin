@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>使用方法 | 犬の鼻ラベリング管理ツール</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; color: #333; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; padding-top: 80px; }
+    .hero {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff; border-radius: 12px; padding: 28px; margin-bottom: 20px; text-align: center;
+    }
+    .hero h1 { font-size: 28px; margin-bottom: 8px; }
+    .hero p { opacity: 0.95; }
+
+    .section { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 16px; }
+    .section h2 { font-size: 20px; margin-bottom: 10px; color: #444; }
+    .section p { margin: 8px 0; line-height: 1.7; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+
+    /* ステップカード */
+    .card { display: grid; grid-template-columns: 80px 1fr; gap: 16px; align-items: center; border: 1px solid #eee; border-radius: 12px; padding: 14px; }
+    .card h3 { margin: 0 0 6px; font-size: 16px; color: #333; }
+    .card p { margin: 0; color: #555; font-size: 14px; }
+
+    /* インラインSVGアイコン */
+    .icon { width: 64px; height: 64px; }
+    .kbd { display: inline-block; padding: 2px 6px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px; }
+
+    .note { font-size: 13px; color: #666; }
+  .label-key { color: #000; font-weight: 600; }
+  /* 画像バッジ用 */
+  .img-badge-wrap { position: relative; display: inline-block; width: 200px; height: 200px; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+  .img-badge-wrap > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .badge { position: absolute; left: 8px; bottom: 8px; background: rgba(100,181,246,0.92); color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 9999px; line-height: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+  </style>
+</head>
+<body>
+  {% include 'header.html' with context %}
+  <div class="container">
+    <div class="hero">
+      <h1>このツールの使用方法</h1>
+      <p>ラベリングからレビュー、エクスポートまでの基本フローとショートカットを図で説明します。</p>
+    </div>
+
+    <!-- ラベリング操作ガイド画像 -->
+    <div class="section" style="text-align: center;">
+      <img src="/static/laveling-info.png" alt="ラベリング操作ガイド" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);" />
+      <p class="note" style="margin-top: 8px;">ラベリング画面の概要図</p>
+    </div>
+
+    <!-- 画像の注釈（凡例） -->
+    <div class="section">
+      <h2>ラベリング画面各部の説明</h2>
+      <div class="grid">
+        <!-- ① 未作業のみ表示 -->
+        <div class="card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2" ry="2"/>
+            <path d="M7 12l2 2 4-4"/>
+          </svg>
+          <div>
+            <h3>① 未作業のみ表示</h3>
+            <p>チェックを入れると作業状況が「未作業」のもののみを作業することができます。</p>
+          </div>
+        </div>
+
+        <!-- ② フィルタセクション -->
+        <div class="card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#9c27b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 3H2l8 9v7l4 2v-9l8-9z"/>
+          </svg>
+          <div>
+            <h3>② フィルタセクション</h3>
+            <p>③・④・⑤に表示する作業対象を絞り込むことができます。クラスやサブラベル、特定のファイル名で検索が可能です。</p>
+          </div>
+        </div>
+
+        <!-- ③ 作業スペース（鼻あり時のbbox） -->
+        <div class="card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="5" y="5" width="14" height="14"/>
+            <path d="M9 9h6v6H9z"/>
+          </svg>
+          <div>
+            <h3>③ 作業スペース（鼻の位置指定）</h3>
+            <p>④のクラス「鼻あり」が選択されている場合、犬の鼻を四角で囲む作業が必要です。自動プログラムで下処理済みですが、精度が不十分な場合は手動で修正してください。</p>
+          </div>
+        </div>
+
+        <!-- ④ 作業スペース（ラベル選択） -->
+        <div class="card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#00bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 6l-11 11-5-5"/>
+            <path d="M9 3h6l6 6v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+          </svg>
+          <div>
+            <h3>④ 作業スペース（クラス/サブラベル）</h3>
+            <p>画像を確認し、一致するクラスやサブラベルの選択が必要です。</p>
+            <p class="note" style="margin: 0 0 6px;">クラスを選ぶ → サブラベルを選ぶ</p>
+            <h4 style="margin: 0 0 6px; color: #333;">クラスの判定方法</h4>
+            <p class="note" style="margin: 0 0 6px;">画像内に犬の鼻の全体が含まれている場合は「鼻あり」を選択します。</p>
+            <p class="note" style="margin: 0 0 6px;">鼻が物で一部隠れている場合や、犬の鼻が映っていない場合は「鼻なし」を選択します。</p>
+            <h4 style="margin: 0 0 6px; color: #333;">サブクラスの判定方法</h4>
+            <p class="note" style="margin: 0 0 6px;"><span class="label-key">鼻の向き：</span>右や左を向いている場合は「横向き」を選択、傾いている場合は「斜め」を選択します。</p>
+            <span class="img-badge-wrap">
+              <img src="/static/sample02.png" alt="参考サンプル" />
+              <span class="badge">横向き</span>
+            </span>            <img src="/static/sample03.png" alt="参考サンプル" style="width: 200px; height: 200px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);" />
+            <img src="/static/sample04.png" alt="参考サンプル" style="width: 200px; height: 200px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);" />
+            <p class="note" style="margin: 0 0 6px;"><span class="label-key">鮮明判定：</span>左の画像の①のように鼻紋がはっきりと見える場合は「鮮明」と選択します。鼻紋がはっきりと確認できない場合は「ぼやけ」を選択します。以下は「ぼやけ」のサンプルです。</p>
+            <span class="img-badge-wrap">
+              <img src="/static/sample05.png" alt="参考サンプル" />
+              <span class="badge">ぼやけ</span>
+            </span>
+            <span class="img-badge-wrap">
+              <img src="/static/sample06.png" alt="参考サンプル" />
+              <span class="badge">ぼやけ</span>
+            </span>
+            <p class="note" style="margin: 0 0 6px;"><span class="label-key">鼻の色：</span>鼻の色を選択します。以下はサンプルです。</p>
+            <span class="img-badge-wrap">
+              <img src="/static/sample10.png" alt="参考サンプル" />
+              <span class="badge">マーブル</span>
+            </span>
+            <p class="note" style="margin: 0 0 6px;"><span class="label-key">鼻の大きさ：</span>子犬の鼻はとても小さい為、「小さい」を選択します。それ以外を「大きい」と選択します。以下はサンプルです。</p>
+            <span class="img-badge-wrap">
+              <img src="/static/sample08.png" alt="参考サンプル" />
+              <span class="badge">大きい</span>
+            </span>
+            <span class="img-badge-wrap">
+              <img src="/static/sample09.png" alt="参考サンプル" />
+              <span class="badge">小さい</span>
+            </span>
+            <p class="note" style="margin: 0 0 6px;"><span class="label-key">毛色：</span>犬の鼻の周りの毛色が明るい色か、暗い色かを選択します。以下はサンプルです。</p>
+            <p class="note" style="margin: 0 0 6px;"><span class="label-key">鼻の長さ：</span>眉間から鼻先までの長さがどの程度かを選択します。判定が難しいので感覚でOKです。</p>
+          </div>
+        </div>
+        
+        <!-- ⑤ 対象データの一部表示 -->
+        <div class="card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#795548" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+          </svg>
+          <div>
+            <h3>⑤ 対象データの一部表示</h3>
+            <p>表示されている画像データの一部が一覧表示されます。</p>
+          </div>
+        </div>
+
+        <!-- ⑥ エクスポートテスト用ボタン -->
+        <div class="card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#2196f3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12"/>
+            <path d="M7 12l5 5 5-5"/>
+            <path d="M5 21h14"/>
+          </svg>
+          <div>
+            <h3>⑥ エクスポートテスト用ボタン</h3>
+            <p>表示されている画像、クラス、メインラベル、サブラベルのデータが正しくエクスポートされるかテストできます。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>1. ラベリング（画像ごとの操作）</h2>
+      <div class="grid">
+        <div class="card">
+          <!-- カメラ/画像アイコン -->
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="7" width="18" height="14" rx="2" ry="2"></rect>
+            <circle cx="12" cy="14" r="4"></circle>
+            <path d="M8 7l1.5-3h5L16 7"/>
+          </svg>
+          <div>
+            <h3>メインラベル選択</h3>
+            <p>対象部位「鼻」や「鼻なし」を選択。鼻を選んだ場合はバウンディングボックス（正方形制約）で位置を指定します。</p>
+            <p class="note">鼻以外を選んだ場合は自動的に bbox は保存されません。</p>
+          </div>
+        </div>
+        <div class="card">
+          <!-- クリック/ドラッグの手アイコン -->
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2v10"/>
+            <path d="M9 6h6"/>
+            <path d="M5 12l7 10 7-10"/>
+          </svg>
+          <div>
+            <h3>操作の流れ</h3>
+            <p>画像を確認 → ラベルとサブラベルを選択 → 必要に応じて bbox を描画 → 保存 → 次へ進む。</p>
+            <p class="note">画像エラー時は代替画像や onerror 処理で自動復帰します。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>2. ショートカット</h2>
+      <div class="grid">
+        <div class="card">
+          <!-- キーボードアイコン -->
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#ff9800" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect>
+            <path d="M7 9h10M7 13h6"/>
+          </svg>
+          <div>
+            <h3>基本移動</h3>
+            <p><span class="kbd">←</span> 前の画像 / <span class="kbd">→</span> 次の画像（100ms ロックで連打暴発を予防）</p>
+            <p class="note">同時押しガードあり（非修飾キー複数同時は無視）。</p>
+          </div>
+        </div>
+        <div class="card">
+          <!-- タグ/チェックアイコン -->
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#00bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 6l-11 11-5-5"/>
+            <path d="M9 3h6l6 6v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+          </svg>
+          <div>
+            <h3>ラベル選択</h3>
+            <p>数字キーや定義済みキーでクラス/サブラベルを素早く選択可能。Enterで保存。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>3. レビューとフィルター</h2>
+      <div class="grid">
+        <div class="card">
+          <!-- フィルターアイコン -->
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#9c27b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 3H2l8 9v7l4 2v-9l8-9z"/>
+          </svg>
+          <div>
+            <h3>未作業のみ/クラス/サブラベル/ファイル名</h3>
+            <p>ANDロジックで絞り込み。該当ゼロ後もチェック解除で結果が戻るように改善済み。</p>
+          </div>
+        </div>
+        <div class="card">
+          <!-- 画像グリッドアイコン -->
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#795548" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+          </svg>
+          <div>
+            <h3>サムネイルから編集</h3>
+            <p>レビュー結果一覧から対象をクリックして詳細編集に移れます。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>4. データセット分割とエクスポート</h2>
+      <div class="grid">
+        <div class="card">
+          <!-- パズル/配分アイコン -->
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 3v18M3 12h18"/>
+          </svg>
+          <div>
+            <h3>自動分割（プレビュー一致）</h3>
+            <p>ハミルトン方式でプレビューと実数を一致。TEST不足時はVAL→TRAINから補充。preferモードで「鼻なし」はVAL/TEST 各1枚まで。</p>
+          </div>
+        </div>
+        <div class="card">
+          <!-- ダウンロードアイコン -->
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#2196f3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden>
+            <path d="M12 3v12"/><path d="M7 12l5 5 5-5"/><path d="M5 21h14"/>
+          </svg>
+          <div>
+            <h3>エクスポート</h3>
+            <p>1枚単位またはまとめてzipに出力。YOLOラベルはbboxから自動変換します。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>よくある質問</h2>
+      <p><strong>Q.</strong> 鼻なしの時にプレビューは？<br /><strong>A.</strong> クロッププレビューには <code>no-nose-img.png</code> を表示し、bboxキャンバスは非表示になります。</p>
+      <p><strong>Q.</strong> 画像が表示されない時は？<br /><strong>A.</strong> 画像onerrorで自動復帰。最大幅・エラーハンドラを組み合わせて安定表示させています。</p>
+    </div>
+  </div>
+</body>
+</html>
