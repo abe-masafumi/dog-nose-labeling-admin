@@ -822,26 +822,120 @@ def auto_split_dataset():
             conn.close()
         return jsonify(result)
 
-    # 詳細ターゲットあり：貪欲割当
+    # --- main_label の事前割当: 各 split の容量に対する最低保証を行う ---
+    # ここでは、例えば "nose(train)=100%" の意味を "train スロットのうち指定割合を最低限確保する" と解釈する。
+    # まず、全体の各 split の目標枚数をハミルトン法で算出（desired_counts）
     splits = ['train', 'val', 'test']
-    split_perc = {
-        'train': train_percent,
-        'val': val_percent,
-        'test': test_percent,
-    }
+    split_perc = {'train': train_percent, 'val': val_percent, 'test': test_percent}
+    exact = {s: total_count * split_perc[s] / 100.0 for s in splits}
+    desired_counts = {s: int(exact[s]) for s in splits}
+    # 保存: 表示用に pre-allocation 前の desired_counts を保持
+    orig_desired_counts = dict(desired_counts)
+    assigned_tmp = sum(desired_counts.values())
+    rema_tmp = sorted([(exact[s] - desired_counts[s], s) for s in splits], reverse=True)
+    idx_tmp = 0
+    while assigned_tmp < total_count:
+        _, sname = rema_tmp[idx_tmp % len(rema_tmp)]
+        desired_counts[sname] += 1
+        assigned_tmp += 1
+        idx_tmp += 1
+
+    # class_map を作成
+    ml_targets = targets.get('main_label') if isinstance(targets.get('main_label'), dict) else None
+    pre_assignments = {s: [] for s in splits}
+    if ml_targets:
+        class_map = defaultdict(list)
+        for item in pool:
+            ml_raw = item.get('main_label')
+            cls = ml_raw if (ml_raw is not None and ml_raw != '') else 'none'
+            class_map[cls].append(item)
+
+        # 各 split ごとに、指定されたクラスの合計割合が 100% を超えていないか確認
+        for s in sorted(splits, key=lambda x: desired_counts.get(x, 0)):
+            sum_pct = 0.0
+            for cls, conf in (ml_targets.items() if isinstance(ml_targets, dict) else []):
+                try:
+                    pct = float((ml_targets.get(cls) or {}).get(s) or 0)
+                except Exception:
+                    pct = 0.0
+                sum_pct += pct
+            if sum_pct > 100.0 + 1e-6:
+                conn.close()
+                return jsonify({'error': f"main_label の {s} に対する指定割合の合計が100%を超えています: {sum_pct}%"}), 400
+
+        # 各 split 毎に指定割合に基づく required counts を算出（ハミルトン法で端数配分）
+        required_counts = {cls: {s: 0 for s in splits} for cls in class_map.keys()}
+        for s in splits:
+            # gather classes with explicit pct for this split
+            cls_pcts = []
+            for cls in class_map.keys():
+                try:
+                    pct = float((ml_targets.get(cls) or {}).get(s)) if (ml_targets.get(cls) is not None and ml_targets.get(cls).get(s) is not None) else None
+                except Exception:
+                    pct = None
+                if pct is not None:
+                    cls_pcts.append((cls, pct))
+            # if none specified for this split, skip preallocation
+            if not cls_pcts:
+                continue
+            # compute exact counts for specified classes
+            exact_cls = {cls: desired_counts[s] * pct / 100.0 for cls, pct in cls_pcts}
+            base_cls = {cls: int(exact_cls[cls]) for cls in exact_cls}
+            assigned_local = sum(base_cls.values())
+            rema_local = sorted([(exact_cls[cls] - base_cls[cls], cls) for cls in exact_cls], reverse=True)
+            il = 0
+            while assigned_local < desired_counts[s]:
+                _, c = rema_local[il % len(rema_local)]
+                base_cls[c] += 1
+                assigned_local += 1
+                il += 1
+            for cls, cnt in base_cls.items():
+                required_counts[cls][s] = cnt
+
+        # perform pre-allocation: for each split and each class, pick up to required_counts from class_map
+        assigned_ids = set()
+        for s in sorted(splits, key=lambda x: desired_counts.get(x, 0)):
+            for cls, cnt in ([(c, required_counts[c][s]) for c in required_counts.keys()] if required_counts else []):
+                if cnt <= 0:
+                    continue
+                items = class_map.get(cls, [])
+                taken = 0
+                for it in items:
+                    if taken >= cnt:
+                        break
+                    if id(it) in assigned_ids:
+                        continue
+                    pre_assignments[s].append(it)
+                    assigned_ids.add(id(it))
+                    taken += 1
+
+        # rebuild pool as unassigned items only (remove pre-assigned)
+        new_pool = []
+        for it in pool:
+            if id(it) not in assigned_ids:
+                new_pool.append(it)
+        pool = new_pool
+
+        # subtract pre-assigned counts from desired_counts for greedy phase
+        for s in splits:
+            desired_counts[s] = max(0, desired_counts[s] - len(pre_assignments[s]))
+
+    # 詳細ターゲットあり：貪欲割当
     # prefer の有効化条件: 明示ONのみ（UIはデフォルトOFF）
     prefer_effective = prefer_target_distribution
     # ハミルトン法で split 希望枚数を算出（合計=total_count）
-    exact = {s: total_count * split_perc[s] / 100.0 for s in splits}
-    desired_counts = {s: int(exact[s]) for s in splits}
-    assigned = sum(desired_counts.values())
-    rema = sorted([(exact[s] - desired_counts[s], s) for s in splits], reverse=True)
-    iidx = 0
-    while assigned < total_count:
-        _, sname = rema[iidx % len(rema)]
-        desired_counts[sname] += 1
-        assigned += 1
-        iidx += 1
+    # ただし既に main_label ベースで desired_counts が計算済み（ml_targets 有効時）は再計算しない
+    if not ml_targets:
+        exact = {s: total_count * split_perc[s] / 100.0 for s in splits}
+        desired_counts = {s: int(exact[s]) for s in splits}
+        assigned = sum(desired_counts.values())
+        rema = sorted([(exact[s] - desired_counts[s], s) for s in splits], reverse=True)
+        iidx = 0
+        while assigned < total_count:
+            _, sname = rema[iidx % len(rema)]
+            desired_counts[sname] += 1
+            assigned += 1
+            iidx += 1
 
     # 属性マップと判定関数
     attribute_order = ['orientation', 'clarity', 'color', 'size', 'fur', 'nose_length', 'main_label']
@@ -1004,20 +1098,53 @@ def auto_split_dataset():
         # 余りを埋める（ターゲット未指定 or 充足後の残り）
         remain_needed = max(0, target_total - len(assignments[s]))
         if remain_needed > 0 and unassigned:
-            # prefer の有無にかかわらず、split の目標枚数までは未割当から充足する
+            # 主ラベル(targets に main_label が指定されている)がある場合、まずそのクラスの不足を優先して埋める
             taken_indices = set()
             take = []
             taken_none = 0
-            for idx, item in enumerate(unassigned):
-                if len(take) >= remain_needed:
-                    break
-                if prefer_effective and is_none_item(item):
-                    assigned_none = sum(1 for _it in assignments[s] if is_none_item(_it)) + taken_none
-                    if assigned_none >= required_none_limit.get(s, 0):
+            if ml_targets:
+                # 計算用の現在割当数を得る
+                cur_counts = defaultdict(int)
+                for _it in assignments[s]:
+                    mlc = _it.get('main_label') if (_it.get('main_label') is not None and _it.get('main_label') != '') else 'none'
+                    cur_counts[mlc] += 1
+                # 欠損クラスを先に満たす
+                for cls in (list((targets.get('main_label') or {}).keys())):
+                    if len(take) >= remain_needed:
+                        break
+                    want = int((required_counts.get(cls, {}) or {}).get(s, 0))
+                    # 当該 split に対する目標（required_counts）を超えていなければ取りに行く
+                    need_cls = max(0, want - cur_counts.get(cls, 0))
+                    if need_cls <= 0:
                         continue
-                    taken_none += 1
-                take.append(item)
-                taken_indices.add(idx)
+                    # pick up to need_cls items of this class from unassigned
+                    for idx, item in enumerate(unassigned):
+                        if len(take) >= remain_needed:
+                            break
+                        if idx in taken_indices:
+                            continue
+                        if (item.get('main_label') if (item.get('main_label') is not None and item.get('main_label') != '') else 'none') == cls:
+                            # prefer時の none 上限チェック
+                            if prefer_effective and is_none_item(item):
+                                assigned_none = sum(1 for _it in assignments[s] if is_none_item(_it)) + sum(1 for t in take if is_none_item(t))
+                                if assigned_none >= required_none_limit.get(s, 0):
+                                    continue
+                            take.append(item)
+                            taken_indices.add(idx)
+                            cur_counts[cls] += 1
+                # まだ埋まらない場合は通常の採取にフォールバック
+            if len(take) < remain_needed:
+                for idx, item in enumerate(unassigned):
+                    if len(take) >= remain_needed:
+                        break
+                    if idx in taken_indices:
+                        continue
+                    if prefer_effective and is_none_item(item):
+                        assigned_none = sum(1 for _it in assignments[s] if is_none_item(_it)) + sum(1 for t in take if is_none_item(t))
+                        if assigned_none >= required_none_limit.get(s, 0):
+                            continue
+                    take.append(item)
+                    taken_indices.add(idx)
             assignments[s].extend(take)
             if taken_indices:
                 unassigned = [it for i, it in enumerate(unassigned) if i not in taken_indices]
@@ -1028,11 +1155,28 @@ def auto_split_dataset():
             # ターゲット優先: 余剰は配分せず未使用（比率は近似のまま）
             unassigned = []
         else:
-            order = sorted(splits, key=lambda x: len(assignments[x]))
-            for item in unassigned:
-                order = sorted(splits, key=lambda x: len(assignments[x]))
-                assignments[order[0]].append(item)
-            unassigned = []
+            # 余剰アイテムは、各 split のクラス不足を埋める方向で割り振る（可能な限り）
+            for item in list(unassigned):
+                # このアイテムの class
+                cls = item.get('main_label') if (item.get('main_label') is not None and item.get('main_label') != '') else 'none'
+                # 欠損を探す: split の中で cls の assigned < required_counts(cls, split)
+                target_split = None
+                # check splits where cls has deficit
+                for s in sorted(splits, key=lambda x: len(assignments[x])):
+                    want = 0
+                    if ml_targets:
+                        want = int((required_counts.get(cls, {}) or {}).get(s, 0))
+                    # assigned count for cls in split s
+                    assigned_cls = sum(1 for _it in assignments[s] if ((_it.get('main_label') if (_it.get('main_label') is not None and _it.get('main_label') != '') else 'none') == cls))
+                    if assigned_cls < want:
+                        target_split = s
+                        break
+                # If no specific deficit, fallback to smallest split
+                if target_split is None:
+                    order = sorted(splits, key=lambda x: len(assignments[x]))
+                    target_split = order[0]
+                assignments[target_split].append(item)
+                unassigned.remove(item)
 
     # 最終リバランス: prefer_target_distribution がオフのときだけ実施
     if not prefer_effective:
@@ -1064,6 +1208,12 @@ def auto_split_dataset():
                 break
 
     # カバレッジを assignments から計算（main_label + 指定されたラベルのみ）
+    # merge pre_assignments (if any) into final assignments
+    if 'pre_assignments' in locals() and any(pre_assignments.values()):
+        for s in splits:
+            # pre-assigned items should be placed before greedily assigned ones
+            assignments[s] = list(pre_assignments.get(s, [])) + assignments[s]
+
     for s in splits:
         for item in assignments[s]:
             # main_label は None/空文字を 'none' に正規化（JSONキーの安定化とUI整合のため）
@@ -1098,14 +1248,15 @@ def auto_split_dataset():
                         {
                             **{
                                 v: (
+                                    # main_label の場合、preallocation で求めた required_counts を優先表示
+                                    (required_counts[v][s] if (ml_targets and attr == 'main_label' and 'required_counts' in locals() and v in required_counts) else
                                     # prefer時の main_label:none は公平按分を表示
-                                    int(fairness_required[s].get('main_label:none', 0))
-                                    if (prefer_effective and attr == 'main_label' and v == 'none' and fairness_required[s].get('main_label:none') is not None)
-                                    else int(
-                                        desired_counts[s]
+                                    (int(fairness_required[s].get('main_label:none', 0)) if (prefer_effective and attr == 'main_label' and v == 'none' and fairness_required[s].get('main_label:none') is not None) else
+                                    int(
+                                        orig_desired_counts[s]
                                         * float(((targets.get(attr) or {}).get(v) or {}).get(s, 0) or 0)
                                         / 100
-                                    )
+                                    )))
                                 )
                                 for v in (targets.get(attr) or {}).keys()
                             }
